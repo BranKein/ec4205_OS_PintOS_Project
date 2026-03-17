@@ -198,11 +198,11 @@ timer_interrupt (struct intr_frame *args UNUSED)
       if (t->until < ticks)
       {
         if_sleeping = true;
+        list_remove(&t->elem);
         break;
       }
     }
   if (!if_sleeping) {
-    list_remove(&t->elem);
     thread_tick ();
   }
   
