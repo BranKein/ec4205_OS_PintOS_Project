@@ -203,6 +203,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
       }
     }
   if (!if_sleeping) {
+    printf("tick!");
     thread_tick ();
   }
   
