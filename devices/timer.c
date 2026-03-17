@@ -201,7 +201,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
       }
     }
   if (!if_sleeping) {
-    list_remove(&e->elem);
+    list_remove(e);
     thread_tick ();
   }
   
