@@ -604,17 +604,18 @@ void thread_sleep (int64_t sleep_until) {
 }
 
 void thread_wakeup (int64_t tick) {
-    struct list_elem *e;
     struct thread *t;
-    for (e = list_begin(&sleeping_thread_list); e != list_end(&sleeping_thread_list);
-         e = list_next(e))
-    {
+    struct list_elem *e = list_begin(&sleeping_thread_list);
+
+    while (e != list_end(&sleeping_thread_list)) {
         t = list_entry (e, struct thread, elem);
         if (t->sleep_until <= tick) {
             // wakeup!
             t->sleep_until = 0;
             e = list_remove(e);
             thread_unblock (t);
+        } else {
+            e = list_next(e);
         }
     }
 }
