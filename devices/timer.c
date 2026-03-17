@@ -109,7 +109,7 @@ timer_sleep (int64_t ticks)
   st->t = cur;
   st->until = start + ticks;
 
-  list_push_back(&sleeping_thread_list, &st);
+  list_push_back(&sleeping_thread_list, &st->elem);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -187,7 +187,6 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  int64_t start = timer_ticks ();
 
   struct list_elem *e;
   bool if_sleeping = false;
@@ -195,14 +194,14 @@ timer_interrupt (struct intr_frame *args UNUSED)
        e = list_next(e))
     {
       struct sleeping_thread *t = list_entry (e, struct sleeping_thread, elem);
-      if (t->sleep_until < ticks)
+      if (t->until < ticks)
       {
         if_sleeping = true;
         break;
       }
     }
   if (!if_sleeping) {
-    list_remove(e);
+    list_remove(&e->elem);
     thread_tick ();
   }
   
