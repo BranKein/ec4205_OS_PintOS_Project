@@ -7,7 +7,6 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-#include "threads/malloc.h"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -38,7 +37,6 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
-  malloc_init();
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -96,11 +94,9 @@ timer_sleep (int64_t ticks)
   ASSERT (intr_get_level () == INTR_ON);
 
   struct thread *cur = thread_current();
-  int64_t *sleep_until = malloc(sizeof(int64_t));
-  *sleep_until = start + ticks;
 
-  cur->stack -= sizeof int64_t;
-  *(cur->stack) = sleep_until;
+  cur->stack -= sizeof(int64_t);
+  *(cur->stack) = start + ticks;
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -182,7 +178,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   struct thread *cur = thread_current();
   int64_t *sleep_until = (int64_t *) (cur->stack);
   if (*sleep_until >= ticks) {
-    free(sleep_until);
+    cur->stack += sizeof(int64_t);
     thread_tick();
   }
   
