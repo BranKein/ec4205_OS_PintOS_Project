@@ -93,18 +93,15 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
 
-  struct semaphore idle_started;
-  sema_init (&idle_started, 0);
+  intr_enable();
 
   for (;;) {
     printf("Idle print!");
-    idle(&idle_started);
+    thread_block()
     if (timer_elapsed (start) >= ticks) {
       break;
     }
   }
-
-  sema_down (&idle_started);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
