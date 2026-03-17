@@ -189,11 +189,12 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
 
   struct list_elem *e;
+  struct sleeping_thread *t;
   bool if_sleeping = false;
   for (e = list_begin(&sleeping_thread_list); e != list_end(&sleeping_thread_list);
        e = list_next(e))
     {
-      struct sleeping_thread *t = list_entry (e, struct sleeping_thread, elem);
+      t = list_entry (e, struct sleeping_thread, elem);
       if (t->until < ticks)
       {
         if_sleeping = true;
@@ -201,7 +202,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
       }
     }
   if (!if_sleeping) {
-    list_remove(e);
+    list_remove(&t->elem);
     thread_tick ();
   }
   
