@@ -613,7 +613,7 @@ void thread_wakeup (int64_t tick) {
         if (t->sleep_until <= tick) {
             // wakeup!
             t->sleep_until = 0;
-            list_remove(e);
+            e = list_remove(e);
             thread_unblock (t);
         }
     }
