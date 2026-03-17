@@ -30,6 +30,14 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
+struct sleeping_thread
+  {
+    struct list_elem elem;
+    struct thread *t;
+    int64_t until;
+  };
+static struct list sleeping_thread_list;
+
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -37,6 +45,8 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+
+  list_init(&sleeping_thread_list);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -95,8 +105,11 @@ timer_sleep (int64_t ticks)
 
   struct thread *cur = thread_current();
 
-  cur->stack -= sizeof(int64_t);
-  *(cur->stack) = start + ticks;
+  struct sleeping_thread *st;
+  st->t = cur;
+  st->until = start + ticks;
+
+  list_push_back(&sleeping_thread_list, &st);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -174,12 +187,23 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  
-  struct thread *cur = thread_current();
-  int64_t *sleep_until = (int64_t *) (cur->stack);
-  if (*sleep_until >= ticks) {
-    cur->stack += sizeof(int64_t);
-    thread_tick();
+  int64_t start = timer_ticks ();
+
+  struct list_elem *e;
+  bool if_sleeping = false;
+  for (e = list_begin(&sleeping_thread_list); e != list_end(&sleeping_thread_list);
+       e = list_next(e))
+    {
+      struct sleeping_thread *t = list_entry (e, struct sleeping_thread, elem);
+      if (t->sleep_until < ticks)
+      {
+        if_sleeping = true;
+        break;
+      }
+    }
+  if (!if_sleeping) {
+    list_remove(e);
+    thread_tick ();
   }
   
 }
