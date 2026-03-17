@@ -187,22 +187,27 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  struct thread *cur = thread_current();
 
   struct list_elem *e;
   struct sleeping_thread *t;
-  bool if_sleeping = false;
+  bool sleeping = false;
   for (e = list_begin(&sleeping_thread_list); e != list_end(&sleeping_thread_list);
        e = list_next(e))
     {
       t = list_entry (e, struct sleeping_thread, elem);
-      if (t->until < ticks)
-      {
-        if_sleeping = true;
-        list_remove(&t->elem);
+      if (t == cur) {
+        if (t->until < ticks) {
+          // still sleeping
+          sleeping = true;
+        } else {
+          // woke up
+          list_remove(&t->elem);
+        }
         break;
       }
     }
-  if (!if_sleeping) {
+  if (!sleeping) {
     printf("tick!");
     thread_tick ();
   }
