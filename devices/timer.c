@@ -97,6 +97,7 @@ timer_sleep (int64_t ticks)
   sema_init (&idle_started, 0);
 
   for (;;) {
+    printf("Idle print!")
     idle(&idle_started);
     if (timer_elapsed (start) >= ticks) {
       break;
