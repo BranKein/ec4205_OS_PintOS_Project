@@ -31,15 +31,16 @@ loop t for all element in sleeping_thread_list
         note right thread: need to wake up and unblock
         thread -> thread: t->sleep_until = 0
         thread -> thread: remove t from sleeping_thread_list
-        thread -> thread: call thread_unblock(t)
+        thread -> thread ++: call thread_unblock(t)
         note right thread
         thread_unblock makes thread as THREAD_READY
         then push that thread to ready_list
         end note
     end alt
 end loop
-thread -> thread --
-timer <- thread --
+thread <- thread --: return thread_unblock
+timer <- thread --: return thread_wakeup
+<- timer: return timer_interrupt
 
 == after thread_unblock() is called ==
 timer <- thread: return thread_sleep()
