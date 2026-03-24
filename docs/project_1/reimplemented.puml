@@ -1,0 +1,48 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+participant "timer.c" as timer
+participant "thread.c" as thread
+participant "interrupt.c" as interrupt
+
+autonumber
+
+-> timer: from sleeper, call timer_sleep(ticks)
+timer -> timer: call timer_ticks()
+timer -> timer: assert if Interrupts is turned on
+
+timer -> thread: call thread_sleep(until)
+thread -> thread: disable interrupt
+thread -> thread: store until to sleep_until
+thread -> thread: store current thread to sleeping_thread_list
+thread -> thread: call thread_block()
+note right thread
+thread_block makes thread as THREAD_BLOCKED and call schedule()
+by calling schedule(), other thread that has THREAD_READY is running
+end note
+
+== by idle_thread ==
+-> timer: from interrupt, call timer_interrupt()
+timer -> timer: ticks += 1
+timer -> thread: call thread_tick()
+timer -> thread ++: call thread_wakeup(ticks)
+loop t for all element in sleeping_thread_list
+    alt if t->sleep_until <= ticks
+        note right thread: need to wake up and unblock
+        thread -> thread: t->sleep_until = 0
+        thread -> thread: remove t from sleeping_thread_list
+        thread -> thread: call thread_unblock(t)
+        note right thread
+        thread_unblock makes thread as THREAD_READY
+        then push that thread to ready_list
+        end note
+    end alt
+end loop
+thread -> thread --
+timer <- thread --
+
+== after thread_unblock() is called ==
+timer <- thread: return thread_sleep()
+<- timer: return timer_sleep()
+
+@enduml
