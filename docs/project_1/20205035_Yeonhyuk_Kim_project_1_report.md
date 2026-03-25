@@ -53,89 +53,26 @@ cpu 가 해당 스레드를 실행하지 않게 하고 다른 스레드로의 cp
 
 ## Mechanism (implementation)
 
-이번 프로젝트에서 새로 추가된 메소드는 `thread.c` 에 `thread_sleep`, 그리고 `thread_wakeup` 이며, 수정된 메소드는
-`timer.c` 의 `timer_sleep`, `timer_interrupt`, `thread.c` 의 `thread_init` 메소드이다.
-(`thread.c` 의 메소드를 외부에서 호출 할 수 있도록 `thread.h` 에 메소드 declaration)
+수정된 파일 리스트
 
-추가로 sleep 중인 스레드를 저장하는 list 또한 thread.c 에 static 변수로 추가하였다.
+* devices/timer.c (+3-2)
+* threads/thread.h (+5)
+* thread/thread.c (+34)
 
-```c++
-// thread.c
+### devices/timer.c
 
-static struct list sleeping_thread_list;
+* timer_sleep 메소드 호출 시 thread.c 의 thread_yield 가 아니라 thread_sleep 을 호출하게 됨
+* timer_interrupt 메소드 호출 시에는 thread_wakeup 을 추가로 호출하게 되어있다.
 
-// ...
+### threads/thread.h
 
-void
-thread_init (void)
-{
-  //...
-  list_init(&sleeping_thread_list); // Added for list initialization
-    
-  //..
-}
-```
+* `thread.c` 의 추가된 메소드를 외부에서 호출 할 수 있도록 `thread.h` 에 메소드를 declaration 합니다.
 
-thread_sleep 과 thread_wakeup 메소드는 위 sequence diagram 대로 구현되었다. thread_sleep 메소드의 argument sleep_until 은
-해당 스레드가 어느 tick 까지 sleep 하고 있을지를 저장하고 있고, thread_wakeup 메소드의 argument tick 은 현재 cpu tick 을 저장하고 있다.
+### threads/thread.c
 
-```c++
-// thread.c
-void thread_sleep (int64_t sleep_until) {
-    enum intr_level old_level;
-    struct thread *cur = thread_current();
-    ASSERT (cur != idle_thread);
-
-    old_level = intr_disable ();
-
-    cur->sleep_until = sleep_until;
-    list_push_back(&sleeping_thread_list, &cur->elem);
-    thread_block();
-
-    intr_set_level (old_level);
-}
-
-void thread_wakeup (int64_t tick) {
-    struct thread *t;
-    struct list_elem *e = list_begin(&sleeping_thread_list);
-
-    while (e != list_end(&sleeping_thread_list)) {
-        t = list_entry (e, struct thread, elem);
-        if (t->sleep_until <= tick) {
-            // wakeup!
-            t->sleep_until = 0;
-            e = list_remove(e);
-            thread_unblock (t);
-        } else {
-            e = list_next(e);
-        }
-    }
-}
-```
-
-timer.c 에서는 timer_sleep 메소드 호출 시 thread.c 의 thread_yield 가 아니라 thread_sleep 을 호출하게 되어있고,
-timer_interrupt 메소드 호출 시에는 thread_wakeup 을 추가로 호출하게 되어있다.
-
-```c++
-// timer.c
-void
-timer_sleep (int64_t ticks) 
-{
-  int64_t start = timer_ticks ();
-
-  ASSERT (intr_get_level () == INTR_ON);
-
-  thread_sleep(start + ticks); // Added for thread sleep
-}
-
-static void
-timer_interrupt (struct intr_frame *args UNUSED)
-{
-  ticks++;
-  thread_tick ();
-  thread_wakeup(ticks); // Added for thread wakeup
-}
-```
+* thread_sleep 과 thread_wakeup 메소드는 위 sequence diagram 대로 구현되었다. thread_sleep 메소드의 argument sleep_until 은
+  해당 스레드가 어느 tick 까지 sleep 하고 있을지를 저장하고 있고, thread_wakeup 메소드의 argument tick 은 현재 cpu tick 을 저장하고 있다.
+* 추가로 sleep 중인 스레드를 저장하는 list 또한 thread.c 에 static 변수로 추가하였다.
 
 변경사항만을 갖고 있는 github PR 링크는 다음과 같다. [PR](https://github.com/BranKein/ec4205_OS_PintOS_Project/pull/1/changes)
 (docs 폴더 제외하고 확인하시면 됩니다.)
