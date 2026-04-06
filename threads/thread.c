@@ -4,8 +4,6 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
-
-#include "../lib/kernel/list.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -265,13 +263,13 @@ thread_unblock (struct thread *t)
   t->status = THREAD_READY;
   intr_set_level (old_level);
 
-  if (t->waiting_on_sema || t->priority > thread_current()->priority) {
-    if (intr_context()) {
-      intr_yield_on_return();
-    } else {
-      thread_yield();
-    }
-  }
+  // if (t->waiting_on_sema || t->priority > thread_current()->priority) {
+    // if (intr_context()) {
+      // intr_yield_on_return();
+    // } else {
+      // thread_yield();
+    // }
+  // }
 }
 
 /* Returns the name of the running thread. */
