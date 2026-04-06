@@ -355,26 +355,37 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+/* Recalculates t->effective_priority as max(t->priority, max priority
+   among waiters of all locks held by t). */
+void
+thread_recalc_priority (struct thread *t)
+{
+  int effective = t->priority;
+  struct list_elem *e;
+  for (e = list_begin (&t->held_locks); e != list_end (&t->held_locks); e = list_next (e))
+    {
+      struct lock *l = list_entry (e, struct lock, lock_elem);
+      if (!list_empty (&l->semaphore.waiters))
+        {
+          struct thread *top = list_entry (list_front (&l->semaphore.waiters), struct thread, elem);
+          if (top->effective_priority > effective)
+            effective = top->effective_priority;
+        }
+    }
+  t->effective_priority = effective;
+}
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
-thread_set_priority (int new_priority) 
+thread_set_priority (int new_priority)
 {
-  thread_current ()->priority = new_priority;
+  struct thread *cur = thread_current ();
+  cur->priority = new_priority;
+  thread_recalc_priority (cur);
 
-  if (thread_current()->effective_priority < new_priority)
-    // higher up
-    thread_current ()->effective_priority = new_priority;
-  else {
-    // lowering down, when there is no lock waiting on
-    if (thread_current()->waiting_on_lock == NULL)
-      thread_current ()->effective_priority = new_priority;
-  }
-
-  if (intr_context()) {
-    intr_yield_on_return();
-  } else {
-    thread_yield();
-  }
+  /* Yield if a higher-priority thread may now be ready. */
+  if (!intr_context ())
+    thread_yield ();
 }
 
 /* Returns the current thread's priority. */

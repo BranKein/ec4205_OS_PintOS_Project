@@ -263,20 +263,7 @@ lock_release (struct lock *lock)
   struct thread *holder = lock->holder;
   list_remove (&lock->lock_elem);
 
-  /* Recalculate effective_priority from remaining held locks. */
-  int new_priority = holder->priority;
-  struct list_elem *e;
-  for (e = list_begin (&holder->held_locks); e != list_end (&holder->held_locks); e = list_next (e))
-    {
-      struct lock *l = list_entry (e, struct lock, lock_elem);
-      if (!list_empty (&l->semaphore.waiters))
-        {
-          struct thread *top = list_entry (list_front (&l->semaphore.waiters), struct thread, elem);
-          if (top->effective_priority > new_priority)
-            new_priority = top->effective_priority;
-        }
-    }
-  holder->effective_priority = new_priority;
+  thread_recalc_priority (holder);
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
