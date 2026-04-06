@@ -237,9 +237,7 @@ thread_block (void)
 bool thread_priority_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
   struct thread *ta = list_entry(a, struct thread, elem);
   struct thread *tb = list_entry(b, struct thread, elem);
-  // if (ta->waiting_on_sema != tb->waiting_on_sema)
-    // return ta->waiting_on_sema;  /* waiting_on_sema 인 쪽이 앞에 오도록 */
-  return ta->effective_priority > tb->effective_priority;  /* 높은 priority가 앞에 오도록 내림차순 */
+  return ta->effective_priority > tb->effective_priority;  /* order by desc (bigger first) */
 }
 
 /* Transitions a blocked thread T to the ready-to-run state.
@@ -259,7 +257,6 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  // list_push_back (&ready_list, &t->elem);
   list_insert_ordered(&ready_list, &t->elem, thread_priority_less, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -332,7 +329,6 @@ thread_yield (void)
   old_level = intr_disable ();
   if (cur != idle_thread)
     list_insert_ordered(&ready_list, &cur->elem, thread_priority_less, NULL);
-    // list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -355,8 +351,6 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-/* Recalculates t->effective_priority as max(t->priority, max priority
-   among waiters of all locks held by t). */
 void
 thread_recalc_priority (struct thread *t)
 {
@@ -383,12 +377,12 @@ thread_set_priority (int new_priority)
   cur->priority = new_priority;
   thread_recalc_priority (cur);
 
-  /* Yield if a higher-priority thread may now be ready. */
+  // yield cpu immediately when thread priority changes
   if (!intr_context ())
     thread_yield ();
 }
 
-/* Returns the current thread's priority. */
+/* Returns the current thread's (effective) priority. */
 int
 thread_get_priority (void) 
 {
@@ -425,7 +419,7 @@ thread_get_recent_cpu (void)
   /* Not yet implemented. */
   return 0;
 }
-
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
@@ -510,7 +504,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-  t->effective_priority = priority;
+  t->effective_priority = priority; // initialize effective priority as same as priority
   list_init (&t->held_locks);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
@@ -625,7 +619,7 @@ allocate_tid (void)
 
   return tid;
 }
-
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);

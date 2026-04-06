@@ -95,9 +95,8 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     int64_t sleep_until;
-    bool waiting_on_sema;
-    struct list held_locks;         /* Locks currently held by this thread. */
-    struct lock *waiting_on_lock;   /* Lock this thread is blocked on, or NULL. */
+    struct list held_locks;
+    struct lock *waiting_on_lock;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
