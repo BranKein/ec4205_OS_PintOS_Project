@@ -148,5 +148,6 @@ bool thread_priority_less(const struct list_elem *a, const struct list_elem *b, 
 
 void thread_sleep (int64_t);
 void thread_wakeup (int64_t);
+void thread_recalc_priority (struct thread *);
 
 #endif /* threads/thread.h */

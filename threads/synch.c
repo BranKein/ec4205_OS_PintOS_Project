@@ -329,10 +329,23 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
-  list_push_back (&cond->waiters, &waiter.elem);
+  list_insert_ordered (&cond->waiters, &waiter.elem, cond_waiter_less, NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
+}
+
+/* Compares two semaphore_elem waiters by the effective_priority of the
+   thread waiting on each semaphore.  Higher priority → comes first. */
+static bool
+cond_waiter_less (const struct list_elem *a, const struct list_elem *b,
+                  void *aux UNUSED)
+{
+  const struct semaphore_elem *sa = list_entry (a, struct semaphore_elem, elem);
+  const struct semaphore_elem *sb = list_entry (b, struct semaphore_elem, elem);
+  const struct thread *ta = list_entry (list_front (&sa->semaphore.waiters), struct thread, elem);
+  const struct thread *tb = list_entry (list_front (&sb->semaphore.waiters), struct thread, elem);
+  return ta->effective_priority > tb->effective_priority;
 }
 
 /* If any threads are waiting on COND (protected by LOCK), then
@@ -343,7 +356,7 @@ cond_wait (struct condition *cond, struct lock *lock)
    make sense to try to signal a condition variable within an
    interrupt handler. */
 void
-cond_signal (struct condition *cond, struct lock *lock UNUSED) 
+cond_signal (struct condition *cond, struct lock *lock UNUSED)
 {
   ASSERT (cond != NULL);
   ASSERT (lock != NULL);
