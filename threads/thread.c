@@ -260,16 +260,6 @@ thread_unblock (struct thread *t)
   list_insert_ordered(&ready_list, &t->elem, thread_priority_less, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
-
-  struct thread *cur = thread_current ();
-
-  if (cur != idle_thread) {
-    if (intr_context()) {
-      intr_yield_on_return();
-    } else {
-      thread_yield();
-    }
-  }
 }
 
 /* Returns the name of the running thread. */
