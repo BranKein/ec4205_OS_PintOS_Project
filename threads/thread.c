@@ -265,9 +265,7 @@ thread_unblock (struct thread *t)
 
   struct thread *cur = thread_current ();
 
-  printf("t waiting on sema?: %s\n", t->waiting_on_sema ? "true" : "false");
   if (cur != idle_thread && (t->waiting_on_sema || t->priority > cur->priority)) {
-    printf("t priority: %d, current t priority: %d\n", t->priority, cur->priority);
     if (intr_context()) {
       intr_yield_on_return();
     } else {
