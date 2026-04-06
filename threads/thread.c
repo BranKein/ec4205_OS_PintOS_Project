@@ -369,6 +369,13 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  thread_current ()->effective_priority = new_priority;
+
+  if (intr_context()) {
+    intr_yield_on_return();
+  } else {
+    thread_yield();
+  }
 }
 
 /* Returns the current thread's priority. */
