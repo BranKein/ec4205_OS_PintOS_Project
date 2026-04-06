@@ -263,13 +263,14 @@ thread_unblock (struct thread *t)
   t->status = THREAD_READY;
   intr_set_level (old_level);
 
-  // if (t->waiting_on_sema || t->priority > thread_current()->priority) {
-    // if (intr_context()) {
-      // intr_yield_on_return();
-    // } else {
-      // thread_yield();
-    // }
-  // }
+  printf("t waiting on sema?: %s", t->waiting_on_sema ? "true" : "false");
+  if (t->waiting_on_sema || t->priority > thread_current()->priority) {
+    if (intr_context()) {
+      intr_yield_on_return();
+    } else {
+      thread_yield();
+    }
+  }
 }
 
 /* Returns the name of the running thread. */
