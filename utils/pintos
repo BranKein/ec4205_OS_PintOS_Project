@@ -632,7 +632,9 @@ sub run_qemu {
     push (@cmd, '-S') if $debug eq 'monitor';
     push (@cmd, '-s', '-S') if $debug eq 'gdb';
     push (@cmd, '-monitor', 'null') if $vga eq 'none' && $debug eq 'none';
-    run_command (@cmd);
+    push (@cmd, '-device', 'isa-debug-exit,iobase=0xf4,iosize=0x04');
+    print join (' ', @cmd), "\n";
+    xsystem (@cmd);  # isa-debug-exit causes non-zero exit; ignore it
 }
 
 # player_unsup($flag)

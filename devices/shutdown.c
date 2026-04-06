@@ -104,6 +104,9 @@ shutdown_power_off (void)
   for (p = s; *p != '\0'; p++)
     outb (0x8900, *p);
 
+  /* QEMU 2.x: isa-debug-exit device at port 0xf4. */
+  outb (0xf4, 0x00);
+
   /* This will power off a VMware VM if "gui.exitOnCLIHLT = TRUE"
      is set in its configuration file.  (The "pintos" script does
      that automatically.)  */
