@@ -285,10 +285,11 @@ lock_held_by_current_thread (const struct lock *lock)
 }
 
 /* One semaphore in a list. */
-struct semaphore_elem 
+struct semaphore_elem
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
+    int priority;                       /* effective_priority of the waiting thread. */
   };
 
 /* Initializes condition variable COND.  A condition variable
@@ -333,6 +334,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
+  waiter.priority = thread_current ()->effective_priority;
   list_insert_ordered (&cond->waiters, &waiter.elem, cond_waiter_less, NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
@@ -347,9 +349,7 @@ cond_waiter_less (const struct list_elem *a, const struct list_elem *b,
 {
   const struct semaphore_elem *sa = list_entry (a, struct semaphore_elem, elem);
   const struct semaphore_elem *sb = list_entry (b, struct semaphore_elem, elem);
-  const struct thread *ta = list_entry (list_front (&sa->semaphore.waiters), struct thread, elem);
-  const struct thread *tb = list_entry (list_front (&sb->semaphore.waiters), struct thread, elem);
-  return ta->effective_priority > tb->effective_priority;
+  return sa->priority > sb->priority;
 }
 
 /* If any threads are waiting on COND (protected by LOCK), then
