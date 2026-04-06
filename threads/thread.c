@@ -360,7 +360,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
-  if (thread_current()->effective_priority < new_priority && thread_current()->waiting_on_lock != NULL)
+  if (thread_current()->effective_priority < new_priority && thread_current()->waiting_on_lock == NULL)
     thread_current ()->effective_priority = new_priority;
 
   if (intr_context()) {
