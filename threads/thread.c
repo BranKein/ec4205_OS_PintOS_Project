@@ -238,7 +238,7 @@ bool thread_priority_less(const struct list_elem *a, const struct list_elem *b, 
   struct thread *tb = list_entry(b, struct thread, elem);
   if (ta->waiting_on_sema != tb->waiting_on_sema)
     return ta->waiting_on_sema;  /* waiting_on_sema 인 쪽이 앞에 오도록 */
-  return ta->priority > tb->priority;  /* 높은 priority가 앞에 오도록 내림차순 */
+  return ta->effective_priority > tb->effective_priority;  /* 높은 priority가 앞에 오도록 내림차순 */
 }
 
 /* Transitions a blocked thread T to the ready-to-run state.
@@ -493,6 +493,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->effective_priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }
