@@ -94,6 +94,7 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     int64_t sleep_until;
+    bool waiting_on_sema;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
