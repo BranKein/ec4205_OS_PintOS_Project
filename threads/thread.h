@@ -96,6 +96,7 @@ struct thread
 
     int64_t sleep_until;
     bool waiting_on_sema;
+    struct list held_locks;     /* Locks currently held by this thread. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
