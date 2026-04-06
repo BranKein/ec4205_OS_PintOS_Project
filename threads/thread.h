@@ -142,6 +142,8 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+bool thread_priority_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
 void thread_sleep (int64_t);
 void thread_wakeup (int64_t);
 
