@@ -236,8 +236,8 @@ thread_block (void)
 bool thread_priority_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
   struct thread *ta = list_entry(a, struct thread, elem);
   struct thread *tb = list_entry(b, struct thread, elem);
-  if (ta->waiting_on_sema != tb->waiting_on_sema)
-    return ta->waiting_on_sema;  /* waiting_on_sema 인 쪽이 앞에 오도록 */
+  // if (ta->waiting_on_sema != tb->waiting_on_sema)
+    // return ta->waiting_on_sema;  /* waiting_on_sema 인 쪽이 앞에 오도록 */
   return ta->effective_priority > tb->effective_priority;  /* 높은 priority가 앞에 오도록 내림차순 */
 }
 
