@@ -263,7 +263,7 @@ thread_unblock (struct thread *t)
 
   struct thread *cur = thread_current ();
 
-  if (cur != idle_thread && (t->waiting_on_sema || t->priority > cur->priority)) {
+  if (cur != idle_thread) {
     if (intr_context()) {
       intr_yield_on_return();
     } else {
