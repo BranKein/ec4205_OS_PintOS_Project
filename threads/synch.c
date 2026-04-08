@@ -32,9 +32,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
-static bool
-cond_waiter_less (const struct list_elem *a, const struct list_elem *b,
-                  void *aux UNUSED);
+static bool cond_waiter_less (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
@@ -352,7 +350,7 @@ static bool cond_waiter_less (const struct list_elem *a, const struct list_elem 
    make sense to try to signal a condition variable within an
    interrupt handler. */
 void
-cond_signal (struct condition *cond, struct lock *lock UNUSED)
+cond_signal (struct condition *cond, struct lock *lock UNUSED) 
 {
   ASSERT (cond != NULL);
   ASSERT (lock != NULL);

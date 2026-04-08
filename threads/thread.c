@@ -424,21 +424,17 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-void
-thread_recalc_priority (struct thread *t)
-{
+void thread_recalc_priority (struct thread *t) {
   int effective = t->priority;
   struct list_elem *e;
-  for (e = list_begin (&t->held_locks); e != list_end (&t->held_locks); e = list_next (e))
-    {
-      struct lock *l = list_entry (e, struct lock, lock_elem);
-      if (!list_empty (&l->semaphore.waiters))
-        {
-          struct thread *top = list_entry (list_front (&l->semaphore.waiters), struct thread, elem);
-          if (top->effective_priority > effective)
-            effective = top->effective_priority;
-        }
+  for (e = list_begin (&t->held_locks); e != list_end (&t->held_locks); e = list_next (e)) {
+    struct lock *l = list_entry (e, struct lock, lock_elem);
+    if (!list_empty (&l->semaphore.waiters)) {
+      struct thread *top = list_entry (list_front (&l->semaphore.waiters), struct thread, elem);
+      if (top->effective_priority > effective)
+        effective = top->effective_priority;
     }
+  }
   t->effective_priority = effective;
 }
 
