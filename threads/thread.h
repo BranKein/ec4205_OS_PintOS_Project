@@ -97,6 +97,8 @@ struct thread
     int64_t sleep_until;
     struct list held_locks;
     struct lock *waiting_on_lock;
+    int nice;
+    int recent_cpu;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
