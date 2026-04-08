@@ -216,9 +216,10 @@ lock_acquire (struct lock *lock)
     cur->waiting_on_lock = lock;
     struct lock *l = lock;
     while (l != NULL && l->holder != NULL) {
-      if (l->holder->effective_priority >= cur->effective_priority)
+      if (!need_priority_donate(cur, l->holder)) {
         break;
-      l->holder->effective_priority = cur->effective_priority;
+      }
+      priority_donate(cur, l->holder);
       l = l->holder->waiting_on_lock;
     }
   }

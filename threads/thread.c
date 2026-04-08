@@ -184,7 +184,11 @@ thread_create (const char *name, int priority,
     return TID_ERROR;
 
   /* Initialize thread. */
-  init_thread (t, name, priority);
+  if (thread_mlfqs) { // if true, use multi-level feedback queue scheduler
+    init_thread (t, name, PRI_DEFAULT);
+  } else {
+    init_thread (t, name, priority);
+  }
   tid = t->tid = allocate_tid ();
 
   /* Prepare thread for first run by initializing its stack.
@@ -653,4 +657,14 @@ void thread_wakeup (int64_t tick) {
             e = list_next(e);
         }
     }
+}
+
+bool need_priority_donate(struct thread *from, struct thread *to) {
+  if (thread_mlfqs) return false;
+  return from->effective_priority > to->effective_priority;
+}
+
+void priority_donate(struct thread *from, struct thread *to) {
+  if (thread_mlfqs) return;
+  to->effective_priority = from->effective_priority;
 }

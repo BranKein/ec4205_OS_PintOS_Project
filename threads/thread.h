@@ -149,4 +149,7 @@ void thread_sleep (int64_t);
 void thread_wakeup (int64_t);
 void thread_recalc_priority (struct thread *);
 
+bool need_priority_donate(struct thread *from, struct thread *to);
+void priority_donate(struct thread *from, struct thread *to);
+
 #endif /* threads/thread.h */
