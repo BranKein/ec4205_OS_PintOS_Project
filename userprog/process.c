@@ -59,9 +59,20 @@ process_execute (const char *file_name)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *file_name_and_args)
 {
-  char *file_name = file_name_;
+  char *token, *save_ptr;
+  char *argv[64];
+  char *arg_addr[64];
+  int argc = 0;
+
+  for (token = strtok_r(file_name_and_args, " ", &save_ptr);
+        token != NULL;
+        token = strtok_r(NULL, " ", &save_ptr)) {
+    argv[argc++] = token;
+  }
+
+  char *file_name = argv[0];
   struct intr_frame if_;
   bool success;
 
@@ -73,9 +84,38 @@ start_process (void *file_name_)
   success = load (file_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
-  if (!success) 
+  if (!success) {
+    palloc_free_page (file_name_and_args);
     thread_exit ();
+  }
+
+  // push args to if_.esp
+  for (int i = 0; i < argc; i++) {
+    if_.esp -= strlen(argv[i]) + 1;
+    memcpy(if_.esp, argv[i], strlen(argv[i]) + 1);
+    arg_addr[i] = (char *) if_.esp;
+  }
+  // word alignment
+  if_.esp = (void *)((uintptr_t)if_.esp & ~3);
+  // push Null sentinel
+  if_.esp -= sizeof(char *);
+  *(char **)if_.esp = NULL;
+  // push args address to if_.esp
+  for (int i = argc - 1; i >= 0; i--) {
+    if_.esp -= 4;
+    *(char **)if_.esp = arg_addr[i];
+  }
+  char **argv_p = (char **)if_.esp;
+  if_.esp -= sizeof(char **);
+  *(char ***)if_.esp = argv_p;
+  // push argc value to if_.esp
+  if_.esp -= sizeof(int);
+  *(int *)if_.esp = argc;
+  // push fake return address
+  if_.esp -= sizeof(void *);
+  *(void **)if_.esp = NULL;
+
+  palloc_free_page (file_name_and_args);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
