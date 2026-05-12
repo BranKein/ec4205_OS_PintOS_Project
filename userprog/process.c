@@ -90,7 +90,8 @@ start_process (void *file_name_and_args)
   }
 
   // push args to if_.esp
-  for (int i = 0; i < argc; i++) {
+  int i = 0;
+  for (i = 0; i < argc; i++) {
     if_.esp -= strlen(argv[i]) + 1;
     memcpy(if_.esp, argv[i], strlen(argv[i]) + 1);
     arg_addr[i] = (char *) if_.esp;
