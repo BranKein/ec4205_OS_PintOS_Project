@@ -267,8 +267,10 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
-  if (t->effective_priority > thread_current ()->effective_priority)
-    thread_yield ();
+  if (t->effective_priority > thread_current ()->effective_priority) {
+    if (!intr_context())
+      thread_yield ();
+  }
 
   return tid;
 }
@@ -465,7 +467,8 @@ void thread_set_nice (int nice) {
   cur->nice = nice;
   mlfqs_recalc_priority(cur);
   // If the running thread no longer has the highest priority, yields.
-  thread_yield();
+  if (!intr_context())
+    thread_yield();
 }
 
 /* Returns the current thread's nice value. */
