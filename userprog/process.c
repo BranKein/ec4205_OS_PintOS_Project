@@ -102,7 +102,7 @@ start_process (void *file_name_and_args)
   if_.esp -= sizeof(char *);
   *(char **)if_.esp = NULL;
   // push args address to if_.esp
-  for (int i = argc - 1; i >= 0; i--) {
+  for (i = argc - 1; i >= 0; i--) {
     if_.esp -= 4;
     *(char **)if_.esp = arg_addr[i];
   }
