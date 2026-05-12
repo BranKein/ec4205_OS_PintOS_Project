@@ -99,7 +99,7 @@ void sys_exec (struct intr_frame *f) {
 }
 
 void sys_wait (struct intr_frame *f) {
-  pid_t pid = *(pid_t*)(f->esp + 4);
+  int pid = *(int*)(f->esp + 4);
   int status = process_wait (pid);
   f->eax = status;
 
