@@ -579,6 +579,7 @@ init_thread (struct thread *t, const char *name, int priority)
 
 #ifdef USERPROG
   t->exit_code = -1;
+  sema_init(&t->wait_child_sema, 0);
 #endif
 }
 
@@ -735,4 +736,13 @@ bool need_priority_donate(struct thread *from, struct thread *to) {
 void priority_donate(struct thread *from, struct thread *to) {
   if (thread_mlfqs) return;
   to->effective_priority = from->effective_priority;
+}
+
+struct thread* thread_find(tid_t child_tid) {
+  struct list_elem *e;
+  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
+    struct thread *t = list_entry(e, struct thread, allelem);
+    if (t->tid == child_tid) return t;
+  }
+  return NULL;
 }

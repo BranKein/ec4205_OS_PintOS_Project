@@ -104,6 +104,7 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     int exit_code;
+    struct semaphore wait_child_sema;
 #endif
 
     /* Owned by thread.c. */
@@ -154,5 +155,7 @@ void thread_recalc_priority (struct thread *);
 
 bool need_priority_donate(struct thread *from, struct thread *to);
 void priority_donate(struct thread *from, struct thread *to);
+
+struct thread* thread_find(tid_t child_tid);
 
 #endif /* threads/thread.h */

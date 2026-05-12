@@ -138,9 +138,13 @@ start_process (void *file_name_and_args)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid)
 {
-  return -1;
+  struct thread *child = thread_find (child_tid);
+  if (child == NULL) return -1;
+
+  sema_down(&child->wait_child_sema);
+  return child->exit_code;
 }
 
 /* Free the current process's resources. */
@@ -170,6 +174,7 @@ process_exit (void)
 
       int ec = cur->exit_code;
       printf("%s: exit(%d)\n", cur->name, ec);
+      sema_up(&cur->wait_child_sema);
     }
 }
 
