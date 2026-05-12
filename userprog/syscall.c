@@ -94,7 +94,17 @@ void sys_filesize (struct intr_frame *f) {}
 
 void sys_read (struct intr_frame *f) {}
 
-void sys_write (struct intr_frame *f) {}
+void sys_write (struct intr_frame *f) {
+  int fd = *(int*)(f->esp + 4);
+  int n = *(int*)(f->esp + 8);
+  char *buf = (char*)(f->esp + 12);
+  if (fd == 1) {
+    putbuf(buf, size);
+    f->eax = size;
+  } else {
+    f->eax = -1;
+  }
+}
 
 void sys_seek (struct intr_frame *f) {}
 
