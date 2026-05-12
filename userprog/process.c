@@ -38,8 +38,19 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  // extract process name (tokenize file_name into process name and args)
+  char *fn_copy2;
+  fn_copy2 = palloc_get_page (0);
+  if (fn_copy2 == NULL)
+    return TID_ERROR;
+  strlcpy (fn_copy2, file_name, PGSIZE);
+  char *save_ptr;
+  char *process_name = strtok_r(fn_copy2, " ", &save_ptr);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (process_name, PRI_DEFAULT, start_process, fn_copy);
+  palloc_free_page(fn_copy2);
+
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -103,6 +114,8 @@ process_exit (void)
   pd = cur->pagedir;
   if (pd != NULL) 
     {
+      // user process! -> print exit code
+
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
          so that a timer interrupt can't switch back to the
@@ -113,6 +126,9 @@ process_exit (void)
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
+
+      int ec = cur->exit_code;
+      printf("%s: exit(%d)\n", cur->name, ec);
     }
 }
 
