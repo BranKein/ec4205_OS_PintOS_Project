@@ -92,7 +92,7 @@ void sys_exit (struct intr_frame *f) {
 
 void sys_exec (struct intr_frame *f) {
   const char *cmd_line = *(char**)(f->esp + 4);
-  tid_t pid = process_exec (cmd_line);
+  tid_t pid = process_execute (cmd_line);
   f->eax = pid;
 
   // TODO: the parent process cannot return from the exec until it knows whether the child process successfully loaded its executable. You must use appropriate synchronization to ensure this.
