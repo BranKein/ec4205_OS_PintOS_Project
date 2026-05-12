@@ -99,7 +99,7 @@ void sys_write (struct intr_frame *f) {
   const void *buffer = *(void **)(f->esp + 8);
   unsigned size = *(unsigned*)(f->esp + 12);
   if (fd == 1) {
-    putbuf(buf, size);
+    putbuf(buffer, size);
     f->eax = size;
   } else {
     f->eax = -1;
