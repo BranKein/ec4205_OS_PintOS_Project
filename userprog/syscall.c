@@ -23,6 +23,13 @@ void sys_seek (struct intr_frame *);
 void sys_tell (struct intr_frame *);
 void sys_close (struct intr_frame *);
 
+bool is_valid_user_ptr(const void *ptr) {
+  return ptr != NULL
+    && is_user_vaddr(ptr)
+    && pagedir_get_page(thread_current()->pagedir, ptr) != NULL;
+}
+
+
 void
 syscall_init (void) 
 {
@@ -84,12 +91,6 @@ syscall_handler (struct intr_frame *f)
       printf ("unknown system call %d\n", syscall_num);
       break;
   }
-}
-
-bool is_valid_user_ptr(const void *ptr) {
-  return ptr != NULL
-    && is_user_vaddr(ptr)
-    && pagedir_get_page(thread_current()->pagedir, ptr) != NULL;
 }
 
 /*
