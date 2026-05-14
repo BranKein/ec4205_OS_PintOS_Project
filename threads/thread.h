@@ -26,6 +26,15 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+struct child_info {
+   tid_t child_tid;
+   int exit_code;
+   bool is_exited;
+   bool is_waited;
+   struct semaphore wait_sema;
+   struct list_elem elem;
+};
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -106,9 +115,17 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     int exit_code;
+
+    // loading-related
     struct semaphore load_sema;
     bool load_success;
-    struct semaphore wait_child_sema;
+
+    // execute & wait related
+    // struct semaphore wait_child_sema;
+    struct list child_list;
+    tid_t parent_tid;
+
+    // file descriptor related
     struct file *fd_table[128];
 #endif
 

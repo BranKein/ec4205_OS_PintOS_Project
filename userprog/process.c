@@ -57,8 +57,16 @@ process_execute (const char *file_name)
   }
 
   struct thread *n_thread = thread_find (tid);
-  sema_down(&n_thread->load_sema);
+  n_thread->parent_tid = thread_current()->tid;
+  struct child_info *n_ci = malloc(sizeof(struct child_info));
+  n_ci->child_tid = tid;
+  n_ci->is_exited = false;
+  n_ci->is_waited = false;
+  sema_init(&n_ci->wait_sema, 0);
 
+  list_push_back(&thread_current()->child_list, &n_ci->elem);
+
+  sema_down(&n_thread->load_sema);
   if (!n_thread->load_success) {
     return TID_ERROR;
   }
@@ -152,11 +160,28 @@ start_process (void *file_name_and_args)
 int
 process_wait (tid_t child_tid)
 {
-  struct thread *child = thread_find (child_tid);
-  if (child == NULL) return -1;
+  struct thread *ct = thread_current();
+  struct child_info *wait_target_child_info = NULL;
+  struct list_elem *e;
+  for (e = list_begin(&ct->child_list); e != list_end(&ct->child_list); e = list_next(e)) {
+    struct child_info *ci = list_entry(e, struct child_info, elem);
+    if (ci->child_tid == child_tid) {
+      wait_target_child_info = ci;
+      break;
+    }
+  }
 
-  sema_down(&child->wait_child_sema);
-  return child->exit_code;
+  // if child_tid is not valid or is not current thread's child
+  if (wait_target_child_info == NULL) return -1;
+  // if double waiting
+  if (wait_target_child_info->is_waited) return -1;
+  // if child is already exit
+  if (!wait_target_child_info->is_exited) {
+    sema_down(&wait_target_child_info->wait_sema);
+  }
+  wait_target_child_info->is_waited = true;
+
+  return wait_target_child_info->exit_code;
 }
 
 /* Free the current process's resources. */
@@ -186,7 +211,26 @@ process_exit (void)
 
       int ec = cur->exit_code;
       printf("%s: exit(%d)\n", cur->name, ec);
-      sema_up(&cur->wait_child_sema);
+
+      struct thread *parent = thread_find (cur->parent_tid);
+      if (parent == NULL) {
+        // parent has been exited first
+        return;
+      }
+      struct child_info *cur_child_info = NULL;
+      struct list_elem *e;
+      for (e = list_begin(&parent->child_list); e != list_end(&parent->child_list); e = list_next(e)) {
+        struct child_info *ci = list_entry(e, struct child_info, elem);
+        if (ci->child_tid == cur->tid) {
+          cur_child_info = ci;
+          break;
+        }
+      }
+      if (cur_child_info != NULL) {
+        cur_child_info->exit_code = ec;
+        cur_child_info->is_exited = true;
+        sema_up(&cur_child_info->wait_sema);
+      }
     }
 }
 
