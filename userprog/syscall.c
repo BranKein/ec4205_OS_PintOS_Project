@@ -125,6 +125,11 @@ void sys_exec (struct intr_frame *f) {
   }
 
   const char *cmd_line = *(char**)(f->esp + 4);
+  if (!is_valid_user_ptr(cmd_line)) {
+    thread_current()->exit_code = -1;
+    thread_exit();
+  }
+
   tid_t pid = process_execute (cmd_line);
   f->eax = pid;
 }
