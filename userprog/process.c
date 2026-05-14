@@ -231,6 +231,10 @@ process_exit (void)
           cur->fd_table[i] = NULL;
         }
       }
+      if (cur->executable != NULL) {
+        file_close(cur->executable);
+        cur->executable = NULL;
+      }
 
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
@@ -380,6 +384,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+  file_deny_write(file);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -464,7 +469,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  if (success)
+    thread_current()->executable = file;
+  else
+    file_close (file);
   return success;
 }
 

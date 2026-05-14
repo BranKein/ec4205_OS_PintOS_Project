@@ -116,6 +116,8 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
     int exit_code;
 
+    struct file *executable;
+
     // execute & wait related
     // struct semaphore wait_child_sema;
     struct list child_list;
