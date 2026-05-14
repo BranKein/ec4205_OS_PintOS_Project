@@ -202,8 +202,13 @@ process_wait (tid_t child_tid)
     sema_down(&wait_target_child_info->wait_sema);
   }
   wait_target_child_info->is_waited = true;
+  int exit_code = wait_target_child_info->exit_code;
 
-  return wait_target_child_info->exit_code;
+  // free wait_target_child_info
+  list_remove(&wait_target_child_info->elem);
+  free(wait_target_child_info);
+
+  return exit_code;
 }
 
 /* Free the current process's resources. */
@@ -218,7 +223,14 @@ process_exit (void)
   pd = cur->pagedir;
   if (pd != NULL) 
     {
-      // user process! -> print exit code
+      // auto close opened files when exit
+      int i = 0;
+      for (i = 2; i < 128; i++) {
+        if (cur->fd_table[i] != NULL) {
+          file_close(cur->fd_table[i]);
+          cur->fd_table[i] = NULL;
+        }
+      }
 
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
