@@ -21,6 +21,12 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+struct start_process_info {
+  char *file_name;
+  struct semaphore load_sema;
+  bool load_success;
+};
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -47,17 +53,29 @@ process_execute (const char *file_name)
   char *save_ptr;
   char *process_name = strtok_r(fn_copy2, " ", &save_ptr);
 
+  struct start_process_info *spi = malloc(sizeof(struct start_process_info));
+  if (spi == NULL) {
+    palloc_free_page(fn_copy);
+    palloc_free_page(fn_copy2);
+    return TID_ERROR;
+  }
+  sema_init(&spi->load_sema, 0);
+  spi->file_name = fn_copy;
+  spi->load_success = false;
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (process_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (process_name, PRI_DEFAULT, start_process, spi);
   palloc_free_page(fn_copy2);
 
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
+    free(spi);
     return TID_ERROR;
   }
 
   struct thread *n_thread = thread_find (tid);
   n_thread->parent_tid = thread_current()->tid;
+
   struct child_info *n_ci = malloc(sizeof(struct child_info));
   n_ci->child_tid = tid;
   n_ci->is_exited = false;
@@ -66,8 +84,10 @@ process_execute (const char *file_name)
 
   list_push_back(&thread_current()->child_list, &n_ci->elem);
 
-  sema_down(&n_thread->load_sema);
-  if (!n_thread->load_success) {
+  sema_down(&spi->load_sema);
+  bool ok = spi->load_success;
+  free(spi);
+  if (!ok) {
     return TID_ERROR;
   }
   return tid;
@@ -76,8 +96,10 @@ process_execute (const char *file_name)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_and_args)
+start_process (void *args)
 {
+  struct start_process_info *spi = args;
+  char *file_name_and_args = spi->file_name;
   char *token, *save_ptr;
   char *argv[64];
   char *arg_addr[64];
@@ -100,8 +122,8 @@ start_process (void *file_name_and_args)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  thread_current()->load_success = success;
-  sema_up(&thread_current()->load_sema);
+  spi->load_success = success;
+  sema_up(&spi->load_sema);
 
   /* If load failed, quit. */
   if (!success) {

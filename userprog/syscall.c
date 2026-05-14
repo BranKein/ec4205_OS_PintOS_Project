@@ -32,6 +32,11 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f)
 {
+  if (!is_valid_user_ptr(f->esp)) {
+    thread_current()->exit_code = -1;
+    thread_exit();
+  }
+
   // f->esp + 0: number of system call
   // f->esp + 4+: argument
   int syscall_num = *(int*)(f->esp);
@@ -169,8 +174,6 @@ void sys_wait (struct intr_frame *f) {
   int pid = *(int*)(f->esp + 4);
   int status = process_wait (pid);
   f->eax = status;
-
-  // TODO: handling exception without exit call?
 }
 
 /*

@@ -116,10 +116,6 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
     int exit_code;
 
-    // loading-related
-    struct semaphore load_sema;
-    bool load_success;
-
     // execute & wait related
     // struct semaphore wait_child_sema;
     struct list child_list;
