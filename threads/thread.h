@@ -119,7 +119,6 @@ struct thread
     struct file *executable;
 
     // execute & wait related
-    // struct semaphore wait_child_sema;
     struct list child_list;
     tid_t parent_tid;
 
