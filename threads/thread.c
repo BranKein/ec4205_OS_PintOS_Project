@@ -267,8 +267,10 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
-  if (t->effective_priority > thread_current ()->effective_priority)
-    thread_yield ();
+  if (t->effective_priority > thread_current ()->effective_priority) {
+    if (!intr_context())
+      thread_yield ();
+  }
 
   return tid;
 }
@@ -465,7 +467,8 @@ void thread_set_nice (int nice) {
   cur->nice = nice;
   mlfqs_recalc_priority(cur);
   // If the running thread no longer has the highest priority, yields.
-  thread_yield();
+  if (!intr_context())
+    thread_yield();
 }
 
 /* Returns the current thread's nice value. */
@@ -573,6 +576,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->recent_cpu = 0;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+
+#ifdef USERPROG
+  t->exit_code = -1;
+  list_init(&t->child_list);
+  memset(t->fd_table, 0, sizeof(t->fd_table));
+#endif
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -728,4 +737,13 @@ bool need_priority_donate(struct thread *from, struct thread *to) {
 void priority_donate(struct thread *from, struct thread *to) {
   if (thread_mlfqs) return;
   to->effective_priority = from->effective_priority;
+}
+
+struct thread* thread_find(tid_t child_tid) {
+  struct list_elem *e;
+  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
+    struct thread *t = list_entry(e, struct thread, allelem);
+    if (t->tid == child_tid) return t;
+  }
+  return NULL;
 }

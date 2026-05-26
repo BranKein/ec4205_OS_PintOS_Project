@@ -4,6 +4,8 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
+#include "filesys/file.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -23,6 +25,15 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+struct child_info {
+   tid_t child_tid;
+   int exit_code;
+   bool is_exited;
+   bool is_waited;
+   struct semaphore wait_sema;
+   struct list_elem elem;
+};
 
 /* A kernel thread or user process.
 
@@ -103,6 +114,16 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    int exit_code;
+
+    struct file *executable;
+
+    // execute & wait related
+    struct list child_list;
+    tid_t parent_tid;
+
+    // file descriptor related
+    struct file *fd_table[128];
 #endif
 
     /* Owned by thread.c. */
@@ -153,5 +174,7 @@ void thread_recalc_priority (struct thread *);
 
 bool need_priority_donate(struct thread *from, struct thread *to);
 void priority_donate(struct thread *from, struct thread *to);
+
+struct thread* thread_find(tid_t child_tid);
 
 #endif /* threads/thread.h */

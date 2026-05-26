@@ -127,7 +127,8 @@ sema_up (struct semaphore *sema)
   intr_set_level (old_level);
 
   if (t != NULL && t->effective_priority > thread_current()->effective_priority) {
-    thread_yield();
+    if (!intr_context())
+      thread_yield();
   }
 }
 
