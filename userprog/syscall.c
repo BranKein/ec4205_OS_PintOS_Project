@@ -22,6 +22,8 @@ void sys_write (struct intr_frame *);
 void sys_seek (struct intr_frame *);
 void sys_tell (struct intr_frame *);
 void sys_close (struct intr_frame *);
+void sys_mmap (struct intr_frame *);
+void sys_munmap (struct intr_frame *);
 
 bool is_valid_user_ptr(const void *ptr) {
   return ptr != NULL
@@ -86,6 +88,12 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_CLOSE:
       sys_close (f);
+      break;
+    case SYS_MMAP:
+      sys_mmap (f);
+      break;
+    case SYS_MUNMAP:
+      sys_munmap (f);
       break;
     default:
       printf ("unknown system call %d\n", syscall_num);
@@ -317,4 +325,32 @@ void sys_close (struct intr_frame *f) {
   struct file *fp = thread_current()->fd_table[fd];
   file_close(fp);
   thread_current()->fd_table[fd] = NULL;
+}
+
+void sys_mmap (struct intr_frame *f) {
+  if (!is_valid_user_ptr(f->esp + 4) || !is_valid_user_ptr(f->esp + 8)) {
+    thread_current()->exit_code = -1;
+    thread_exit();
+  }
+
+  int fd = *(int*)(f->esp + 4);
+  if (fd < 2 || fd >= 128 || thread_current()->fd_table[fd] == NULL) {
+    // not valid fd
+    return;
+  }
+  struct file *fp = thread_current()->fd_table[fd];
+  // TODO
+
+  // f->eax = mapid_t; // int
+}
+
+void sys_munmap (struct intr_frame *f) {
+  if (!is_valid_user_ptr(f->esp + 4)) {
+    thread_current()->exit_code = -1;
+    thread_exit();
+  }
+
+  int mapping = *(int*)(f->esp + 4); // mapid_t
+
+  // TODO
 }
