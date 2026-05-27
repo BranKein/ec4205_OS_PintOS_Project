@@ -148,6 +148,7 @@ page_fault (struct intr_frame *f)
 
   // if fault_addr is not user vaddr, kernel panic immediately
   if (!is_user_vaddr(fault_addr)) {
+     printf("DEBUG: not user vaddr\n");
      kill(f);
      return;
   }
