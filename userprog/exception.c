@@ -155,11 +155,13 @@ page_fault (struct intr_frame *f)
   // find page from spt (vm)
   struct spt_entry *e = spt_find(&thread_current()->spt, pg_round_down(fault_addr));
   if (e != NULL) {
+     printf("DEBUG SPT: upage=%p type=%d ofs=%d read=%d\n", e->upage, e->type, (int)e->ofs, (int)e->read_bytes);
      // need palloc_get_page()
 
      // Get a page of memory.
      uint8_t *kpage = palloc_get_page (PAL_USER);
      if (kpage == NULL) {
+        printf("DEBUG: palloc failed\n");
         kill(f);
         return;
      }
@@ -167,7 +169,9 @@ page_fault (struct intr_frame *f)
      if (e->type == PT_FILE) {
         file_seek (e->file, e->ofs);
         // Load the page.
-        if (file_read (e->file, kpage, e->read_bytes) != (int) e->read_bytes) {
+        int bytes_read = file_read (e->file, kpage, e->read_bytes);
+        printf("DEBUG: file_read got %d expected %d\n", bytes_read, e->read_bytes);
+        if (bytes_read != (int) e->read_bytes) {
            palloc_free_page (kpage);
            kill(f);
            return;
@@ -179,6 +183,7 @@ page_fault (struct intr_frame *f)
 
      // Add the page to the process's address space.
      if (!pagedir_set_page (thread_current()->pagedir, e->upage, kpage, e->writable)) {
+        printf("DEBUG: pagedir_set_page failed\n");
         palloc_free_page (kpage);
         kill(f);
      }
@@ -195,6 +200,8 @@ page_fault (struct intr_frame *f)
 
   // handle stack growth - check if addr is in vm addr
   if (fault_addr >= esp - 32 && fault_addr < esp + PGSIZE) {
+     printf("DEBUG: stack growth triggered: fault=%p esp=%p\n", fault_addr, esp);
+
      // malloc & insert new spt_entry with writable, zero filled
      void* upage = pg_round_down(fault_addr);
 
@@ -213,6 +220,7 @@ page_fault (struct intr_frame *f)
      // Get a page of memory.
      uint8_t *kpage = palloc_get_page (PAL_USER);
      if (kpage == NULL) {
+        printf("DEBUG: palloc_get_page failed\n");
         kill(f);
         return;
      }
@@ -220,6 +228,7 @@ page_fault (struct intr_frame *f)
 
      // Add the page to the process's address space.
      if (!pagedir_set_page (thread_current()->pagedir, spt_new->upage, kpage, spt_new->writable)) {
+        printf("DEBUG: pagedir_set_page failed\n");
         palloc_free_page (kpage);
         kill(f);
      }
