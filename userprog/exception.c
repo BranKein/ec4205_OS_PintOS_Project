@@ -190,6 +190,9 @@ page_fault (struct intr_frame *f)
 
    void *esp = (f->cs == SEL_UCSEG) ? f->esp : thread_current()->user_esp;
 
+   printf("DEBUG: fault=%p esp=%p diff=%d\n",
+         fault_addr, esp, (int)(fault_addr - esp));
+
   // handle stack growth - check if addr is in vm addr
   if (fault_addr >= esp - 32 && fault_addr < esp + PGSIZE) {
      // malloc & insert new spt_entry with writable, zero filled
