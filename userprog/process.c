@@ -624,6 +624,8 @@ setup_stack (void **esp)
   spt_e->upage = upage;
   spt_e->type = PT_ZERO;
   spt_e->writable = true;
+  spt_e->read_bytes = 0;
+  spt_e->zero_bytes = PGSIZE;
 
   spt_insert(&thread_current()->spt, spt_e);
 

@@ -1,9 +1,15 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 #include "userprog/gdt.h"
+#include "userprog/pagedir.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
+#include "threads/palloc.h"
+#include "filesys/file.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -139,6 +145,41 @@ page_fault (struct intr_frame *f)
   /* Turn interrupts back on (they were only off so that we could
      be assured of reading CR2 before it changed). */
   intr_enable ();
+
+  // find page from spt (vm)
+  struct spt_entry *e = spt_find(&thread_current()->spt, pg_round_down(fault_addr));
+  if (e != NULL) {
+     // need palloc_get_page()
+
+     // Get a page of memory.
+     uint8_t *kpage = palloc_get_page (PAL_USER);
+     if (kpage == NULL) {
+        kill(f);
+        return;
+     }
+
+     if (e->type == PT_FILE) {
+        file_seek (e->file, e->ofs);
+        // Load the page.
+        if (file_read (e->file, kpage, e->read_bytes) != (int) e->read_bytes) {
+           palloc_free_page (kpage);
+           kill(f);
+           return;
+        }
+        memset (kpage + e->read_bytes, 0, e->zero_bytes);
+     } else if (e->type == PT_ZERO) {
+        memset (kpage, 0, PGSIZE);
+     }
+
+     // Add the page to the process's address space.
+     if (!pagedir_set_page (thread_current()->pagedir, e->upage, kpage, e->writable)) {
+        palloc_free_page (kpage);
+        kill(f);
+     }
+     return;
+  }
+
+  // real page fault!
 
   /* Count page faults. */
   page_fault_cnt++;
