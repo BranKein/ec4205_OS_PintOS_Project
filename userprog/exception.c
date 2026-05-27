@@ -200,7 +200,7 @@ page_fault (struct intr_frame *f)
          fault_addr, esp, (int)(fault_addr - esp));
 
   // handle stack growth - check if addr is in vm addr
-  if (fault_addr >= esp - 32 && fault_addr < esp + PGSIZE) {
+  if ((uintptr_t)fault_addr >= (uintptr_t)esp - 32 && (uintptr_t)fault_addr < (uintptr_t)esp + PGSIZE) {
      printf("DEBUG: stack growth triggered: fault=%p esp=%p\n", fault_addr, esp);
 
      // malloc & insert new spt_entry with writable, zero filled
