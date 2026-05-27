@@ -34,8 +34,11 @@ bool is_valid_user_ptr(const void *ptr) {
   if (ptr == NULL || !is_user_vaddr(ptr))
     return false;
   struct thread *ct = thread_current();
-  struct page *pg = pagedir_get_page(ct->pagedir, ptr);
-  return pg != NULL || spt_find(&ct->spt, pg_round_down((void*)ptr)) != NULL;
+  void *pg = pagedir_get_page(ct->pagedir, ptr);
+  if (pg != NULL) return true;
+  if (spt_find(&ct->spt, pg_round_down((void*)ptr)) != NULL) return true;
+  
+  return (uintptr_t)ptr >= (uintptr_t)PHYS_BASE - (8 * 1024 * 1024);
 }
 
 
