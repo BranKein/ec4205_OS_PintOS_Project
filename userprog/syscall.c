@@ -43,6 +43,7 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f)
 {
+  thread_current()->user_esp = f->esp;
   if (!is_valid_user_ptr(f->esp)) {
     thread_current()->exit_code = -1;
     thread_exit();

@@ -117,6 +117,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
     // vm related
     struct hash spt;
+    void *user_esp;
 
     int exit_code;
 

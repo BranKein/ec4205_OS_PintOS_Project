@@ -185,8 +185,7 @@ page_fault (struct intr_frame *f)
      return;
   }
 
-   printf("DEBUG: fault=%p esp=%p diff=%d\n",
-         fault_addr, f->esp, (int)(fault_addr - f->esp));
+   void *esp = (f->cs == SEL_UCSEG) ? f->esp : thread_current()->user_esp;
 
   // handle stack growth - check if addr is in vm addr
   if (fault_addr >= f->esp - 32 && fault_addr < f->esp + PGSIZE) {
