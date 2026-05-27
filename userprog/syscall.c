@@ -26,9 +26,11 @@ void sys_mmap (struct intr_frame *);
 void sys_munmap (struct intr_frame *);
 
 bool is_valid_user_ptr(const void *ptr) {
+  // return ptr != NULL
+    // && is_user_vaddr(ptr)
+    // && pagedir_get_page(thread_current()->pagedir, ptr) != NULL;
   return ptr != NULL
-    && is_user_vaddr(ptr)
-    && pagedir_get_page(thread_current()->pagedir, ptr) != NULL;
+    && is_user_vaddr(ptr);
 }
 
 
