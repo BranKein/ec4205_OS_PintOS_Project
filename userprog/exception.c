@@ -185,6 +185,39 @@ page_fault (struct intr_frame *f)
      return;
   }
 
+  // handle stack growth - check if addr is in vm addr
+  if (fault_addr >= f->esp - 32 && fault_addr < f->esp + PGSIZE) {
+     // malloc & insert new spt_entry with writable, zero filled
+     void* upage = pg_round_down(fault_addr);
+
+     struct spt_entry* spt_new = malloc(sizeof *spt_new);
+     if (spt_new == NULL) {
+        kill(f);
+        return;
+     }
+     spt_new->upage = upage;
+     spt_new->type = PT_ZERO;
+     spt_new->writable = true;
+     spt_new->read_bytes = 0;
+     spt_new->zero_bytes = PGSIZE;
+     spt_insert(&thread_current()->spt, spt_new);
+
+     // Get a page of memory.
+     uint8_t *kpage = palloc_get_page (PAL_USER);
+     if (kpage == NULL) {
+        kill(f);
+        return;
+     }
+     memset (kpage, 0, PGSIZE);
+
+     // Add the page to the process's address space.
+     if (!pagedir_set_page (thread_current()->pagedir, spt_new->upage, kpage, spt_new->writable)) {
+        palloc_free_page (kpage);
+        kill(f);
+     }
+     return;
+  }
+
   // real page fault!
 
   /* Count page faults. */
