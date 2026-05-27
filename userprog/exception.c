@@ -188,7 +188,7 @@ page_fault (struct intr_frame *f)
    void *esp = (f->cs == SEL_UCSEG) ? f->esp : thread_current()->user_esp;
 
   // handle stack growth - check if addr is in vm addr
-  if (fault_addr >= f->esp - 32 && fault_addr < f->esp + PGSIZE) {
+  if (fault_addr >= esp - 32 && fault_addr < esp + PGSIZE) {
      // malloc & insert new spt_entry with writable, zero filled
      void* upage = pg_round_down(fault_addr);
 
