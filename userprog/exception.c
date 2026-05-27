@@ -146,6 +146,12 @@ page_fault (struct intr_frame *f)
      be assured of reading CR2 before it changed). */
   intr_enable ();
 
+  // if fault_addr is not user vaddr, kernel panic immediately
+  if (!is_user_vaddr(fault_addr)) {
+     kill(f);
+     return;
+  }
+
   // find page from spt (vm)
   struct spt_entry *e = spt_find(&thread_current()->spt, pg_round_down(fault_addr));
   if (e != NULL) {
