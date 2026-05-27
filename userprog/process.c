@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -243,6 +244,7 @@ process_exit (void)
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
+      spt_clear(&cur->spt);
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
@@ -376,6 +378,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   if (t->pagedir == NULL) 
     goto done;
   process_activate ();
+
+  spt_init(&t->spt);
 
   /* Open executable file. */
   file = filesys_open (file_name);
@@ -541,13 +545,15 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
    or disk read error occurs. */
 static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
-              uint32_t read_bytes, uint32_t zero_bytes, bool writable) 
+              uint32_t read_bytes, uint32_t zero_bytes, bool writable)
 {
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
   file_seek (file, ofs);
+  off_t cur_ofs = ofs;
+
   while (read_bytes > 0 || zero_bytes > 0) 
     {
       /* Calculate how to fill this page.
@@ -556,12 +562,29 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      /* Get a page of memory. */
+      // malloc & insert new spt_entry
+      struct spt_entry* spt_e = malloc(sizeof *spt_e);
+      if (spt_e == NULL) {
+        return false;
+      }
+      spt_e->upage = upage;
+      spt_e->type = PT_FILE;
+      spt_e->writable = writable;
+
+      spt_e->file = file;
+      spt_e->ofs = cur_ofs;
+      spt_e->read_bytes = page_read_bytes;
+      spt_e->zero_bytes = page_zero_bytes;
+
+      spt_insert(&thread_current()->spt, spt_e);
+
+      /*
+      // Get a page of memory.
       uint8_t *kpage = palloc_get_page (PAL_USER);
       if (kpage == NULL)
         return false;
 
-      /* Load this page. */
+      // Load this page.
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
           palloc_free_page (kpage);
@@ -569,14 +592,16 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
         }
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
-      /* Add the page to the process's address space. */
+      // Add the page to the process's address space.
       if (!install_page (upage, kpage, writable)) 
         {
           palloc_free_page (kpage);
           return false; 
         }
+      */
 
       /* Advance. */
+      cur_ofs += page_read_bytes;
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
@@ -589,6 +614,19 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
+  void* upage = ((uint8_t *) PHYS_BASE) - PGSIZE;
+
+  // malloc & insert new spt_entry with writable, zero filled
+  struct spt_entry* spt_e = malloc(sizeof *spt_e);
+  if (spt_e == NULL) {
+    return false;
+  }
+  spt_e->upage = upage;
+  spt_e->type = PT_ZERO;
+  spt_e->writable = true;
+
+  spt_insert(&thread_current()->spt, spt_e);
+
   uint8_t *kpage;
   bool success = false;
 
