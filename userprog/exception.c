@@ -146,6 +146,12 @@ page_fault (struct intr_frame *f)
      be assured of reading CR2 before it changed). */
   intr_enable ();
 
+  // check rights violation
+  if ((f->error_code & PF_P) != 0) {
+     kill(f);
+     return;
+  }
+
   // if fault_addr is not user vaddr, kernel panic immediately
   if (!is_user_vaddr(fault_addr)) {
      // printf("DEBUG: not user vaddr\n");
@@ -200,7 +206,7 @@ page_fault (struct intr_frame *f)
          // fault_addr, esp, (int)(fault_addr - esp));
 
   // handle stack growth - check if addr is in vm addr
-  if ((uintptr_t)fault_addr >= (uintptr_t)esp - 32 && (uintptr_t)fault_addr < (uintptr_t)esp + PGSIZE) {
+  if ((uintptr_t)fault_addr >= (uintptr_t)esp - 32 && (uintptr_t)fault_addr >= (uintptr_t)PHYS_BASE - (8 * 1024 * 1024)) {
      // printf("DEBUG: stack growth triggered: fault=%p esp=%p\n", fault_addr, esp);
 
      // malloc & insert new spt_entry with writable, zero filled

@@ -6,6 +6,8 @@
 #include "threads/thread.h"
 #include "devices/shutdown.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -29,8 +31,11 @@ bool is_valid_user_ptr(const void *ptr) {
   // return ptr != NULL
     // && is_user_vaddr(ptr)
     // && pagedir_get_page(thread_current()->pagedir, ptr) != NULL;
-  return ptr != NULL
-    && is_user_vaddr(ptr);
+  if (ptr == NULL || !is_user_vaddr(ptr))
+    return false;
+  struct thread *ct = thread_current();
+  struct page *pg = pagedir_get_page(ct->pagedir, ptr);
+  return pg != NULL || spt_find(&ct->spt, pg_round_down((void*)ptr)) != NULL;
 }
 
 
