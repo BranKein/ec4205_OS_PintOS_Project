@@ -169,7 +169,6 @@ page_fault (struct intr_frame *f)
      // Get a page of memory.
      uint8_t *kpage = frame_alloc(PAL_USER, e->upage);
      if (kpage == NULL) {
-        printf("DEBUG: palloc failed\n");
         kill(f);
         return;
      }
@@ -178,7 +177,6 @@ page_fault (struct intr_frame *f)
         file_seek (e->file, e->ofs);
         // Load the page.
         int bytes_read = file_read (e->file, kpage, e->read_bytes);
-        // printf("DEBUG: file_read got %d expected %d\n", bytes_read, e->read_bytes);
         if (bytes_read != (int) e->read_bytes) {
            frame_free (kpage);
            kill(f);
@@ -193,7 +191,6 @@ page_fault (struct intr_frame *f)
 
      // Add the page to the process's address space.
      if (!pagedir_set_page (thread_current()->pagedir, e->upage, kpage, e->writable)) {
-        // printf("DEBUG: pagedir_set_page failed\n");
         frame_free (kpage);
         kill(f);
      }
@@ -255,11 +252,11 @@ page_fault (struct intr_frame *f)
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
+  // printf ("Page fault at %p: %s error %s page in %s context.\n",
+  //         fault_addr,
+  //         not_present ? "not present" : "rights violation",
+  //         write ? "writing" : "reading",
+  //         user ? "user" : "kernel");
 
   kill (f);
 }
