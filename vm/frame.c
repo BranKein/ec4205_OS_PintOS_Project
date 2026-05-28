@@ -111,6 +111,8 @@ struct frame_entry* evict_frame() {
   for (i = 0; i < 2; i++) {
     for (e = list_begin(&frame_table_list); e != list_end(&frame_table_list); e = list_next(e)) {
       struct frame_entry *fe = list_entry(e, struct frame_entry, elem);
+      // skip unmapped frame on pagedir
+      if (pagedir_get_page(fe->t->pagedir, fe->upage) == NULL) continue;
       if (pagedir_is_accessed(fe->t->pagedir, fe->upage)) {
         pagedir_set_accessed(fe->t->pagedir, fe->upage, false);
       } else {
