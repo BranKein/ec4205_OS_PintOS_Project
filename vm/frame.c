@@ -14,6 +14,8 @@
 static struct list frame_table_list;
 static struct lock frame_lock;
 
+void frame_free_no_lock(void *kpage);
+
 struct frame_entry* evict_frame();
 
 void frame_table_init() {
@@ -51,7 +53,7 @@ void* frame_alloc(enum palloc_flags flags, void *upage) {
 
   struct spt_entry* victim_spt = spt_find(&victim_t->spt, victim_fe->upage);
   if (victim_spt == NULL) {
-    frame_free(victim_fe->kpage);
+    frame_free_no_lock(victim_fe->kpage);
     lock_release(&frame_lock);
     return NULL;
   }
@@ -63,7 +65,7 @@ void* frame_alloc(enum palloc_flags flags, void *upage) {
     victim_spt->type = PT_SWAP;
     victim_spt->swap_slot = swap_out(victim_fe->kpage);
   }
-  frame_free(victim_fe->kpage);
+  frame_free_no_lock(victim_fe->kpage);
 
   // retry palloc_get_page
   kpage = palloc_get_page (flags);
@@ -83,9 +85,7 @@ void* frame_alloc(enum palloc_flags flags, void *upage) {
   return kpage;
 }
 
-void frame_free(void *kpage) {
-  lock_acquire(&frame_lock);
-
+void frame_free_no_lock(void *kpage) {
   struct list_elem *e;
   for (e = list_begin(&frame_table_list); e != list_end(&frame_table_list); e = list_next(e)) {
     struct frame_entry *fe = list_entry(e, struct frame_entry, elem);
@@ -93,10 +93,14 @@ void frame_free(void *kpage) {
       list_remove(e);
       free(fe);
       palloc_free_page(kpage);
-      lock_release(&frame_lock);
       return;
     }
   }
+}
+
+void frame_free(void *kpage) {
+  lock_acquire(&frame_lock);
+  frame_free_no_lock(kpage);
   lock_release(&frame_lock);
 }
 

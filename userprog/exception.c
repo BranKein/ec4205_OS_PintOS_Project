@@ -253,6 +253,14 @@ page_fault (struct intr_frame *f)
           not_present ? "not present" : "rights violation",
           write ? "writing" : "reading",
           user ? "user" : "kernel");
+
+   // process exit (no kernel panic) if kernel access wrong user addr
+   if (f->cs != SEL_UCSEG && is_user_vaddr(fault_addr)) {
+      thread_current()->exit_code = -1;
+      thread_exit();
+      NOT_REACHED();
+   }
+
   kill (f);
 }
 
