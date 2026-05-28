@@ -272,9 +272,7 @@ void sys_read (struct intr_frame *f) {
       return;
     }
     struct file *fp = thread_current()->fd_table[fd];
-    lock_acquire (&filesys_lock);
     f->eax = file_read(fp, buffer, size);
-    lock_release (&filesys_lock);
   }
 }
 
@@ -301,9 +299,7 @@ void sys_write (struct intr_frame *f) {
       return;
     }
     struct file *fp = thread_current()->fd_table[fd];
-    lock_acquire (&filesys_lock);
     f->eax = file_write(fp, buffer, size);
-    lock_release (&filesys_lock);
   }
 }
 
