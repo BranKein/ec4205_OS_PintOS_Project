@@ -3,6 +3,7 @@
 //
 
 #include "page.h"
+#include "swap.h"
 #include <stdlib.h>
 
 unsigned spt_hash_func(const struct hash_elem *e, void *aux);
@@ -47,6 +48,9 @@ void spt_remove(struct hash *spt, void *upage) {
 
 static void spt_entry_free(struct hash_elem *e, void *aux) {
   struct spt_entry *entry = hash_entry(e, struct spt_entry, hash_elem);
+  if (entry->type == PT_SWAP) {
+    swap_free(entry->swap_slot);
+  }
   free(entry);
 }
 

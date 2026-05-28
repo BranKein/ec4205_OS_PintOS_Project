@@ -246,9 +246,6 @@ process_exit (void)
          directory, or our active page directory will be one
          that's been freed (and cleared). */
       spt_clear(&cur->spt);
-      if (cur->spt->type == PT_SWAP) {
-        swap_free(cur->spt->swap_slot);
-      }
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
