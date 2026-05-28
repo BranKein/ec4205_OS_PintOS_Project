@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "vm/frame.h"
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
@@ -245,6 +247,7 @@ process_exit (void)
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
+      frame_remove_by_thread(cur);
       spt_clear(&cur->spt);
       cur->pagedir = NULL;
       pagedir_activate (NULL);

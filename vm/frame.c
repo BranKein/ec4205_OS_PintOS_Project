@@ -120,3 +120,20 @@ struct frame_entry* evict_frame() {
   }
   return NULL;
 }
+
+void frame_remove_by_thread(struct thread* t) {
+  lock_acquire(&frame_lock);
+
+  struct list_elem *e = list_begin(&frame_table_list);
+  while (e != list_end(&frame_table_list)) {
+    struct frame_entry *fe = list_entry(e, struct frame_entry, elem);
+    struct list_elem *next = list_next(e);
+    if (fe->t == t) {
+      list_remove(e);
+      free(fe);
+    }
+    e = next;
+  }
+
+  lock_release(&frame_lock);
+}
