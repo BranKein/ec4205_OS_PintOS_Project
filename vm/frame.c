@@ -84,7 +84,7 @@ void* frame_alloc(enum palloc_flags flags, void *upage) {
 }
 
 void frame_free(void *kpage) {
-  lock_aquire(&frame_lock);
+  lock_acquire(&frame_lock);
 
   struct list_elem *e;
   for (e = list_begin(&frame_table_list); e != list_end(&frame_table_list); e = list_next(e)) {
