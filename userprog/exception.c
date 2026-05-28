@@ -148,15 +148,11 @@ page_fault (struct intr_frame *f)
 
   // check rights violation
   if ((f->error_code & PF_P) != 0) {
-     kill(f);
-     return;
-  }
-
-  // if fault_addr is not user vaddr, kernel panic immediately
-  if (!is_user_vaddr(fault_addr)) {
-     // printf("DEBUG: not user vaddr\n");
-     kill(f);
-     return;
+     // if fault_addr is not user vaddr, kernel panic immediately
+     if ((f->cs != SEL_UCSEG) && is_user_vaddr(fault_addr)) {
+        kill(f);
+        return;
+     }
   }
 
   // find page from spt (vm)
