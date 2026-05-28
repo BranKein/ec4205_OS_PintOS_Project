@@ -9,6 +9,7 @@
 #include "vm/frame.h"
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
+#include "userprog/syscall.h"
 #include "userprog/tss.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
@@ -229,6 +230,7 @@ process_exit (void)
     {
       // auto close opened files when exit
       int i = 0;
+      lock_acquire (&filesys_lock);
       for (i = 2; i < 128; i++) {
         if (cur->fd_table[i] != NULL) {
           file_close(cur->fd_table[i]);
@@ -239,6 +241,7 @@ process_exit (void)
         file_close(cur->executable);
         cur->executable = NULL;
       }
+      lock_release (&filesys_lock);
 
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
@@ -386,16 +389,23 @@ load (const char *file_name, void (**eip) (void), void **esp)
   spt_init(&t->spt);
 
   /* Open executable file. */
+  lock_acquire (&filesys_lock);
   file = filesys_open (file_name);
+  lock_release (&filesys_lock);
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+  lock_acquire (&filesys_lock);
   file_deny_write(file);
+  lock_release (&filesys_lock);
 
   /* Read and verify executable header. */
-  if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
+  lock_acquire (&filesys_lock);
+  bool ehdr_ok = file_read (file, &ehdr, sizeof ehdr) == sizeof ehdr;
+  lock_release (&filesys_lock);
+  if (!ehdr_ok
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
       || ehdr.e_type != 2
       || ehdr.e_machine != 3
@@ -413,11 +423,17 @@ load (const char *file_name, void (**eip) (void), void **esp)
     {
       struct Elf32_Phdr phdr;
 
-      if (file_ofs < 0 || file_ofs > file_length (file))
+      lock_acquire (&filesys_lock);
+      off_t flen = file_length (file);
+      lock_release (&filesys_lock);
+      if (file_ofs < 0 || file_ofs > flen)
         goto done;
+      lock_acquire (&filesys_lock);
       file_seek (file, file_ofs);
+      bool phdr_ok = file_read (file, &phdr, sizeof phdr) == sizeof phdr;
+      lock_release (&filesys_lock);
 
-      if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
+      if (!phdr_ok)
         goto done;
       file_ofs += sizeof phdr;
       switch (phdr.p_type) 
@@ -479,8 +495,11 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* We arrive here whether the load is successful or not. */
   if (success)
     thread_current()->executable = file;
-  else
+  else {
+    lock_acquire (&filesys_lock);
     file_close (file);
+    lock_release (&filesys_lock);
+  }
   return success;
 }
 

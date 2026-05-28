@@ -11,6 +11,8 @@
 
 static void syscall_handler (struct intr_frame *);
 
+struct lock filesys_lock;
+
 void sys_halt (struct intr_frame *);
 void sys_exit (struct intr_frame *);
 void sys_exec (struct intr_frame *);
@@ -45,6 +47,7 @@ bool is_valid_user_ptr(const void *ptr) {
 void
 syscall_init (void) 
 {
+  lock_init (&filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -167,7 +170,9 @@ void sys_create (struct intr_frame *f) {
   }
 
   unsigned initial_size = *(unsigned*)(f->esp + 8);
+  lock_acquire (&filesys_lock);
   f->eax = filesys_create (file, initial_size);
+  lock_release (&filesys_lock);
 }
 
 void sys_remove (struct intr_frame *f) {
@@ -182,7 +187,9 @@ void sys_remove (struct intr_frame *f) {
     thread_exit();
   }
 
+  lock_acquire (&filesys_lock);
   f->eax = filesys_remove (file);
+  lock_release (&filesys_lock);
 }
 
 void sys_open (struct intr_frame *f) {
@@ -197,7 +204,9 @@ void sys_open (struct intr_frame *f) {
     thread_exit();
   }
 
+  lock_acquire (&filesys_lock);
   struct file *of = filesys_open(file);
+  lock_release (&filesys_lock);
   if (of == NULL) {
     f->eax = -1;
     return;
@@ -211,7 +220,9 @@ void sys_open (struct intr_frame *f) {
       return;
     }
   }
+  lock_acquire (&filesys_lock);
   file_close(of);
+  lock_release (&filesys_lock);
   f->eax = -1;
 }
 
@@ -229,7 +240,9 @@ void sys_filesize (struct intr_frame *f) {
     return;
   }
   struct file *fp = thread_current()->fd_table[fd];
+  lock_acquire (&filesys_lock);
   f->eax = file_length(fp);
+  lock_release (&filesys_lock);
 }
 
 void sys_read (struct intr_frame *f) {
@@ -259,7 +272,9 @@ void sys_read (struct intr_frame *f) {
       return;
     }
     struct file *fp = thread_current()->fd_table[fd];
+    lock_acquire (&filesys_lock);
     f->eax = file_read(fp, buffer, size);
+    lock_release (&filesys_lock);
   }
 }
 
@@ -286,7 +301,9 @@ void sys_write (struct intr_frame *f) {
       return;
     }
     struct file *fp = thread_current()->fd_table[fd];
+    lock_acquire (&filesys_lock);
     f->eax = file_write(fp, buffer, size);
+    lock_release (&filesys_lock);
   }
 }
 
@@ -304,7 +321,9 @@ void sys_seek (struct intr_frame *f) {
     return;
   }
   struct file *fp = thread_current()->fd_table[fd];
+  lock_acquire (&filesys_lock);
   file_seek(fp, position);
+  lock_release (&filesys_lock);
 }
 
 void sys_tell (struct intr_frame *f) {
@@ -319,7 +338,9 @@ void sys_tell (struct intr_frame *f) {
     return;
   }
   struct file *fp = thread_current()->fd_table[fd];
+  lock_acquire (&filesys_lock);
   f->eax = file_tell(fp);
+  lock_release (&filesys_lock);
 }
 
 void sys_close (struct intr_frame *f) {
@@ -334,7 +355,9 @@ void sys_close (struct intr_frame *f) {
     return;
   }
   struct file *fp = thread_current()->fd_table[fd];
+  lock_acquire (&filesys_lock);
   file_close(fp);
+  lock_release (&filesys_lock);
   thread_current()->fd_table[fd] = NULL;
 }
 
