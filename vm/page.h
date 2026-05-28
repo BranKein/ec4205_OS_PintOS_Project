@@ -28,7 +28,7 @@ struct spt_entry {
   uint32_t zero_bytes;
 
   // if PT_SWAP
-  // TODO: which swap, which slot N
+  size_t swap_slot;
 
   // for store in hash table
   struct hash_elem hash_elem;
