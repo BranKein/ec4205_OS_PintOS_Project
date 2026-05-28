@@ -152,9 +152,13 @@ page_fault (struct intr_frame *f)
   if ((f->error_code & PF_P) != 0) {
      // if fault_addr is not user vaddr, kernel panic immediately
      if ((f->cs != SEL_UCSEG) && is_user_vaddr(fault_addr)) {
+        thread_current()->exit_code = -1;
+        thread_exit();
+        NOT_REACHED();
+     } else {
         kill(f);
-        return;
      }
+     return;
   }
 
   // find page from spt (vm)

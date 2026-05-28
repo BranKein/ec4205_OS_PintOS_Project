@@ -9,6 +9,8 @@
 #include "threads/synch.h"
 #include <list.h>
 
+struct lock frame_lock;
+
 struct frame_entry {
   void *kpage;
   void *upage;
