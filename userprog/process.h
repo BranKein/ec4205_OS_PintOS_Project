@@ -3,6 +3,7 @@
 
 #include "threads/thread.h"
 #include "threads/synch.h"
+#include "vm/page.h"
 
 extern struct lock filesys_lock;
 
