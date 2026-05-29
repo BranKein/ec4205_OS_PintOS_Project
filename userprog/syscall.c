@@ -245,6 +245,27 @@ void sys_filesize (struct intr_frame *f) {
   lock_release (&filesys_lock);
 }
 
+/*
+ * when sys read or write, it calls file_read/write, it acquires IDE lock internally.
+ * then try to access user buffer, but if the buffer is in swap, page fault occurs,
+ * while handling page fault, try to swap in, it tries to acquire IDE lock again.
+ *
+ * therefore, with prefault_buffer func, we try to read buffer first then occurs page fault,
+ * load buffer in the memory before calling file_read/write.
+ */
+void prefault_buffer(const void *buffer, unsigned size) {
+  uint8_t *b = (uint8_t *)buffer;
+  unsigned i;
+  for (i = 0; i < size; i += PGSIZE) {
+    volatile uint8_t tmp = b[i];
+    (void)tmp;
+  }
+  if (size > 0) {
+    volatile uint8_t tmp = b[size - 1];
+    (void)tmp;
+  }
+}
+
 void sys_read (struct intr_frame *f) {
   if (!is_valid_user_ptr(f->esp + 4) || !is_valid_user_ptr(f->esp + 8) || !is_valid_user_ptr(f->esp + 12)) {
     thread_current()->exit_code = -1;
@@ -272,6 +293,7 @@ void sys_read (struct intr_frame *f) {
       return;
     }
     struct file *fp = thread_current()->fd_table[fd];
+    prefault_buffer(buffer, size);
     f->eax = file_read(fp, buffer, size);
   }
 }
@@ -299,6 +321,7 @@ void sys_write (struct intr_frame *f) {
       return;
     }
     struct file *fp = thread_current()->fd_table[fd];
+    prefault_buffer(buffer, size);
     f->eax = file_write(fp, buffer, size);
   }
 }
