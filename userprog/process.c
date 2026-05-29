@@ -23,6 +23,8 @@
 #include "vm/page.h"
 #include "vm/swap.h"
 
+struct lock filesys_lock;
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -250,6 +252,12 @@ process_exit (void)
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
+      while (!list_empty(&cur->mmap_list)) {
+        struct mmap_entry *me = list_entry(list_front(&cur->mmap_list), struct mmap_entry, elem);
+        list_remove (&me->elem);
+        munmap_clear(me);
+      }
+
       frame_remove_by_thread(cur);
       spt_clear(&cur->spt);
       cur->pagedir = NULL;
@@ -687,4 +695,47 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+void mmap_writeback(struct mmap_entry *mmap_e) {
+  struct thread *ct = thread_current();
+
+  // if dirty, file-write
+  size_t i;
+  for (i = 0; i < mmap_e->page_cnt; i++) {
+    void *upage = (uint8_t*)mmap_e->addr + i * PGSIZE;
+    void *kpage = pagedir_get_page(ct->pagedir, upage);
+    if (kpage == NULL) {
+      // never loaded
+      continue;
+    }
+    if (pagedir_is_dirty(ct->pagedir, upage)) {
+      struct spt_entry *spt_e = spt_find(&ct->spt, upage);
+      uint32_t write_bytes = (spt_e != NULL) ? spt_e->read_bytes : PGSIZE;
+
+      lock_acquire(&filesys_lock);
+      file_write_at(mmap_e->file, kpage, write_bytes, (off_t)(i*PGSIZE));
+      lock_release (&filesys_lock);
+    }
+  }
+}
+
+void munmap_clear(struct mmap_entry *mmap_e) {
+  struct thread *ct = thread_current();
+
+  // dirty check then write-back
+  mmap_writeback(mmap_e);
+
+  size_t i;
+  for (i = 0; i < mmap_e->page_cnt; i++) {
+    void *upage = (uint8_t*)mmap_e->addr + i * PGSIZE;
+    pagedir_clear_page(ct->pagedir, upage);
+    spt_remove(&ct->spt, upage);
+  }
+
+  lock_acquire (&filesys_lock);
+  file_close(mmap_e->file);
+  lock_release (&filesys_lock);
+
+  free(mmap_e);
 }

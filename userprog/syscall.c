@@ -422,7 +422,7 @@ void sys_mmap (struct intr_frame *f) {
   }
 
   struct mmap_entry *mmap_e = malloc(sizeof *mmap_e);
-  int mapid = ct->mmap_id++;
+  int mapid = ct->next_mapid++;
   mmap_e->mapid = mapid;
   mmap_e->file = mmap_file;
   mmap_e->addr = addr;
@@ -442,5 +442,16 @@ void sys_munmap (struct intr_frame *f) {
 
   int mapping = *(int*)(f->esp + 4); // mapid_t
 
-  // TODO
+  struct list_elem *e = list_begin (&thread_current()->mmap_list);
+  while (e != list_end (&thread_current()->mmap_list)) {
+    struct mmap_entry *mmap_e = list_entry (e, struct mmap_entry, elem);
+    struct list_elem *next = list_next (e);
+    if (mmap_e->mapid == mapping) {
+      // dirty write-back
+      list_remove (e);
+      munmap_clear(mmap_e);
+    }
+    e = next;
+  }
+
 }

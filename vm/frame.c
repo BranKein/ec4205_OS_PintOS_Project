@@ -9,6 +9,7 @@
 #include "page.h"
 #include "swap.h"
 #include "threads/thread.h"
+#include "filesys/file.h"
 #include "userprog/pagedir.h"
 
 static struct list frame_table_list;
@@ -58,12 +59,16 @@ void* frame_alloc(enum palloc_flags flags, void *upage) {
     return NULL;
   }
 
-
   // if dirty or anonymous, swap out
   if (pagedir_is_dirty(victim_t->pagedir, victim_fe->upage) || victim_spt->type != PT_FILE) {
-    // call swap_out
-    victim_spt->type = PT_SWAP;
-    victim_spt->swap_slot = swap_out(victim_fe->kpage);
+    if (victim_spt->type == PT_MMAP) {
+      // write-back
+      file_write_at(victim_spt->file, victim_fe->kpage, victim_spt->read_bytes, victim_spt->ofs);
+    } else {
+      // call swap_out
+      victim_spt->type = PT_SWAP;
+      victim_spt->swap_slot = swap_out(victim_fe->kpage);
+    }
   }
   frame_free_no_lock(victim_fe->kpage);
 

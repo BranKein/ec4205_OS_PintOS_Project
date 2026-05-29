@@ -2,10 +2,16 @@
 #define USERPROG_PROCESS_H
 
 #include "threads/thread.h"
+#include "threads/synch.h"
+
+extern struct lock filesys_lock;
 
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
 void process_exit (void);
 void process_activate (void);
+
+void mmap_writeback(struct mmap_entry *mmap_e);
+void munmap_clear(struct mmap_entry *mmap_e);
 
 #endif /* userprog/process.h */
