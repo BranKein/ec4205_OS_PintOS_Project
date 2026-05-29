@@ -173,7 +173,7 @@ page_fault (struct intr_frame *f)
         return;
      }
 
-     if (e->type == PT_FILE) {
+     if (e->type == PT_FILE || e->type == PT_MMAP) {
         file_seek (e->file, e->ofs);
         // Load the page.
         int bytes_read = file_read (e->file, kpage, e->read_bytes);

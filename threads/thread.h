@@ -119,6 +119,10 @@ struct thread
     struct hash spt;
     void *user_esp;
 
+    // mmap related
+    struct list mmap_list;
+    int next_mapid;
+
     int exit_code;
 
     struct file *executable;

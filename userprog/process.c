@@ -387,6 +387,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   spt_init(&t->spt);
+  list_init(&t->mmap_list);
+  t->next_mapid = 1;
 
   /* Open executable file. */
   lock_acquire (&filesys_lock);

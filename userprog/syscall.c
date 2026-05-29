@@ -366,12 +366,72 @@ void sys_mmap (struct intr_frame *f) {
   int fd = *(int*)(f->esp + 4);
   if (fd < 2 || fd >= 128 || thread_current()->fd_table[fd] == NULL) {
     // not valid fd
+    f->eax = -1;
     return;
   }
   struct file *fp = thread_current()->fd_table[fd];
-  // TODO
 
-  // f->eax = mapid_t; // int
+  void *addr = *(void **)(f->esp + 8);
+
+  lock_acquire (&filesys_lock);
+  size_t fl = file_length(fp);
+  if (fl == 0) {
+    f->eax = -1;
+    lock_release (&filesys_lock);
+    return;
+  }
+
+  if (addr == NULL || !is_user_vaddr(addr) || (uintptr_t)addr % PGSIZE != 0) {
+    f->eax = -1;
+    lock_release (&filesys_lock);
+    return;
+  }
+
+  struct thread *ct = thread_current();
+  struct hash *cur_spt = &ct->spt;
+
+  size_t page_cnt = (fl + PGSIZE - 1) / PGSIZE;
+
+  size_t i;
+  for (i = 0; i < page_cnt; i++) {
+    void *upage = (uint8_t*)addr + i * PGSIZE;
+    if (spt_find(cur_spt, upage) != NULL) {
+      f->eax = -1;
+      lock_release (&filesys_lock);
+      return;
+    }
+  }
+
+  struct file *mmap_file = file_reopen(fp); // reopen the file for separation
+
+  for (i = 0; i < page_cnt; i++) {
+    void *upage = (uint8_t*)addr + i * PGSIZE;
+    struct spt_entry *spt_e = malloc(sizeof *spt_e);
+    spt_e->upage = upage;
+    spt_e->type = PT_MMAP;
+    spt_e->writable = true;
+
+    spt_e->file = mmap_file;
+    spt_e->ofs = i * PGSIZE;
+
+    uint32_t read_bytes = (i + 1) * PGSIZE <= fl ? PGSIZE : fl - (off_t)(i * PGSIZE);
+    uint32_t zero_bytes = PGSIZE - read_bytes;
+    spt_e->read_bytes = read_bytes;
+    spt_e->zero_bytes = zero_bytes;
+    spt_insert(cur_spt, spt_e);
+  }
+
+  struct mmap_entry *mmap_e = malloc(sizeof *mmap_e);
+  int mapid = ct->mmap_id++;
+  mmap_e->mapid = mapid;
+  mmap_e->file = mmap_file;
+  mmap_e->addr = addr;
+  mmap_e->page_cnt = page_cnt;
+  list_push_back(&ct->mmap_list, &mmap_e->elem);
+
+  lock_release (&filesys_lock);
+
+  f->eax = mapid;
 }
 
 void sys_munmap (struct intr_frame *f) {

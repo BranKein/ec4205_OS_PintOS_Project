@@ -13,6 +13,15 @@ enum page_type {
   PT_FILE, // page that has to be read from elf executable file
   PT_ZERO, // page that has been filled by 0x00, BSS segments
   PT_SWAP, // page in swap, that had been in physical memory, then gone to swap (disk)
+  PT_MMAP, // page that is mapped with file (memory map)
+};
+
+struct mmap_entry {
+  int mapid;
+  struct file *file;
+  void *addr;
+  size_t page_cnt;
+  struct list_elem elem;
 };
 
 // struct for supplementary page table
@@ -21,7 +30,7 @@ struct spt_entry {
   enum page_type type;
   bool writable;
 
-  // if PT_FILE
+  // if PT_FILE | PT_MMAP
   struct file *file;
   off_t ofs;
   uint32_t read_bytes;
