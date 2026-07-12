@@ -1,0 +1,45 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+participant "timer.c" as timer
+participant "thread.c" as thread
+participant "interrupt.c" as interrupt
+
+autonumber
+
+-> timer: from sleeper, call timer_sleep(ticks)
+timer -> timer: call timer_ticks()
+timer -> timer: assert if Interrupts is turned on
+
+loop while timer_elapsed (start) < ticks
+  timer -> thread ++: call thread_yield()
+  thread -> thread: cur = thread_current()
+  thread -> interrupt: call intr_disable(), store old_intr_level
+
+  alt if current thread is not idle_thread
+    thread -> thread: push current thread to ready_list
+  end alt
+  thread -> thread: change current thread state to THREAD_READY
+  thread -> thread ++: call schedule()
+
+  thread -> thread: call next_thread_to_run() then get thread from ready_list
+  note right thread
+    since current thread is same as next_thread from ready_list,
+    we do not call switch_threads()
+  end note
+
+  thread -> thread++: call thread_schedule_tail()
+  thread -> thread: change current thread state to THREAD_RUNNING
+
+  thread <- thread --: return thread_schedule_tail()
+  thread <- thread --: return schedule()
+
+  thread -> interrupt: call intr_set_level(old_intr_level)
+
+  timer <- thread --: return thread_yield
+
+end loop
+
+<- timer: return timer_sleep
+
+@enduml

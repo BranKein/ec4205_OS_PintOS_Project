@@ -4,6 +4,9 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <hash.h>
+#include "threads/synch.h"
+#include "filesys/file.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -23,6 +26,15 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+struct child_info {
+   tid_t child_tid;
+   int exit_code;
+   bool is_exited;
+   bool is_waited;
+   struct semaphore wait_sema;
+   struct list_elem elem;
+};
 
 /* A kernel thread or user process.
 
@@ -87,17 +99,40 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
+    int priority;                       /* Priority for recover. */
+    int effective_priority;             /* Effective Priority for scheduling. */
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
     int64_t sleep_until;
+    struct list held_locks;
+    struct lock *waiting_on_lock;
+    int nice;
+    int recent_cpu;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    // vm related
+    struct hash spt;
+    void *user_esp;
+
+    // mmap related
+    struct list mmap_list;
+    int next_mapid;
+
+    int exit_code;
+
+    struct file *executable;
+
+    // execute & wait related
+    struct list child_list;
+    tid_t parent_tid;
+
+    // file descriptor related
+    struct file *fd_table[128];
 #endif
 
     /* Owned by thread.c. */
@@ -140,7 +175,15 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+bool thread_priority_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
 void thread_sleep (int64_t);
 void thread_wakeup (int64_t);
+void thread_recalc_priority (struct thread *);
+
+bool need_priority_donate(struct thread *from, struct thread *to);
+void priority_donate(struct thread *from, struct thread *to);
+
+struct thread* thread_find(tid_t child_tid);
 
 #endif /* threads/thread.h */
