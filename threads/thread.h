@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <hash.h>
 #include "threads/synch.h"
 #include "filesys/file.h"
 
@@ -114,6 +115,14 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    // vm related
+    struct hash spt;
+    void *user_esp;
+
+    // mmap related
+    struct list mmap_list;
+    int next_mapid;
+
     int exit_code;
 
     struct file *executable;

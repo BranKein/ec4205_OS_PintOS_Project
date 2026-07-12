@@ -1,9 +1,17 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 #include "userprog/gdt.h"
+#include "userprog/pagedir.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
+#include "threads/palloc.h"
+#include "filesys/file.h"
+#include "vm/page.h"
+#include "vm/frame.h"
+#include "vm/swap.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -140,6 +148,92 @@ page_fault (struct intr_frame *f)
      be assured of reading CR2 before it changed). */
   intr_enable ();
 
+  // check rights violation
+  if ((f->error_code & PF_P) != 0) {
+     // if fault_addr is not user vaddr, kernel panic immediately
+     if ((f->cs != SEL_UCSEG) && is_user_vaddr(fault_addr)) {
+        thread_current()->exit_code = -1;
+        thread_exit();
+        NOT_REACHED();
+     } else {
+        kill(f);
+     }
+     return;
+  }
+
+  // find page from spt (vm)
+  struct spt_entry *e = spt_find(&thread_current()->spt, pg_round_down(fault_addr));
+  if (e != NULL) {
+     // need frame allocation
+
+     // Get a page of memory.
+     uint8_t *kpage = frame_alloc(PAL_USER, e->upage);
+     if (kpage == NULL) {
+        kill(f);
+        return;
+     }
+
+     if (e->type == PT_FILE || e->type == PT_MMAP) {
+        file_seek (e->file, e->ofs);
+        // Load the page.
+        int bytes_read = file_read (e->file, kpage, e->read_bytes);
+        if (bytes_read != (int) e->read_bytes) {
+           frame_free (kpage);
+           kill(f);
+           return;
+        }
+        memset (kpage + e->read_bytes, 0, e->zero_bytes);
+     } else if (e->type == PT_ZERO) {
+        memset (kpage, 0, PGSIZE);
+     } else if (e->type == PT_SWAP) {
+        swap_in(e->swap_slot, kpage);
+     }
+
+     // Add the page to the process's address space.
+     if (!pagedir_set_page (thread_current()->pagedir, e->upage, kpage, e->writable)) {
+        frame_free (kpage);
+        kill(f);
+     }
+     return;
+  }
+
+   void *esp = (f->cs == SEL_UCSEG) ? f->esp : thread_current()->user_esp;
+
+  // handle stack growth - check if addr is in vm addr
+  if ((uintptr_t)fault_addr >= (uintptr_t)esp - 32 && (uintptr_t)fault_addr >= (uintptr_t)PHYS_BASE - (8 * 1024 * 1024)) {
+     // malloc & insert new spt_entry with writable, zero filled
+     void* upage = pg_round_down(fault_addr);
+
+     struct spt_entry* spt_new = malloc(sizeof *spt_new);
+     if (spt_new == NULL) {
+        kill(f);
+        return;
+     }
+     spt_new->upage = upage;
+     spt_new->type = PT_ZERO;
+     spt_new->writable = true;
+     spt_new->read_bytes = 0;
+     spt_new->zero_bytes = PGSIZE;
+     spt_insert(&thread_current()->spt, spt_new);
+
+     // Get a page of memory.
+     uint8_t *kpage = frame_alloc(PAL_USER, upage);
+     if (kpage == NULL) {
+        kill(f);
+        return;
+     }
+     memset (kpage, 0, PGSIZE);
+
+     // Add the page to the process's address space.
+     if (!pagedir_set_page (thread_current()->pagedir, spt_new->upage, kpage, spt_new->writable)) {
+        frame_free (kpage);
+        kill(f);
+     }
+     return;
+  }
+
+  // real page fault!
+
   /* Count page faults. */
   page_fault_cnt++;
 
@@ -148,14 +242,22 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
+   // process exit (no kernel panic) if kernel access wrong user addr
+   if (f->cs != SEL_UCSEG && is_user_vaddr(fault_addr)) {
+      thread_current()->exit_code = -1;
+      thread_exit();
+      NOT_REACHED();
+   }
+
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
+  // printf ("Page fault at %p: %s error %s page in %s context.\n",
+  //         fault_addr,
+  //         not_present ? "not present" : "rights violation",
+  //         write ? "writing" : "reading",
+  //         user ? "user" : "kernel");
+
   kill (f);
 }
 
